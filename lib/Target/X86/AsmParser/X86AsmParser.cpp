@@ -33,6 +33,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Regex.h"
 #include <algorithm>
 #include <memory>
 
@@ -752,6 +753,14 @@ private:
 
   bool OmitRegisterFromClobberLists(unsigned RegNo) override;
 
+  unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
+                                      unsigned Kind) override;
+
+  /// doSrcDstMatch - Returns true if operands are matching in their
+  /// word size (%si and %di, %esi and %edi, etc.). Order depends on
+  /// the parsing mode (Intel vs. AT&T).
+  bool doSrcDstMatch(X86Operand &Op1, X86Operand &Op2);
+
   /// Parses AVX512 specific operand primitives: masked registers ({%k<NUM>}, {z})
   /// and memory broadcasting ({1to<NUM>}) primitives, updating Operands vector if required.
   /// \return \c true if no parsing errors occurred, \c false otherwise.
@@ -966,6 +975,22 @@ bool X86AsmParser::ParseRegister(unsigned &RegNo,
     }
 
     if (RegNo != 0) {
+      EndLoc = Parser.getTok().getEndLoc();
+      Parser.Lex(); // Eat it.
+      return false;
+    }
+  }
+
+  if (RegNo == 0)
+  {
+    llvm::Regex temp_reg{"t[0-9]+"};
+    auto id = Tok.getString();
+    if (temp_reg.match(id))
+    {
+      int reg_no = -1;
+      auto to_int = id.drop_front().getAsInteger(0, reg_no);
+      assert(!to_int);
+      RegNo = reg_no + X86::NUM_TARGET_REGS;
       EndLoc = Parser.getTok().getEndLoc();
       Parser.Lex(); // Eat it.
       return false;
@@ -1864,7 +1889,7 @@ std::unique_ptr<X86Operand> X86AsmParser::ParseIntelOperand() {
       }
       return X86Operand::CreateReg(RegNo, Start, End);
     }
-    
+
     return ParseIntelSegmentOverride(/*SegReg=*/RegNo, Start, Size);
   }
 
@@ -2930,6 +2955,14 @@ bool X86AsmParser::MatchAndEmitIntelInstruction(SMLoc IDLoc, unsigned &Opcode,
 
 bool X86AsmParser::OmitRegisterFromClobberLists(unsigned RegNo) {
   return X86MCRegisterClasses[X86::SEGMENT_REGRegClassID].contains(RegNo);
+}
+
+unsigned X86AsmParser::validateTargetOperandClass(MCParsedAsmOperand &Op,
+                                                  unsigned Kind) {
+  if (Op.isReg() && Op.getReg() >= X86::NUM_TARGET_REGS)
+    return Match_Success;
+  else
+    return Match_InvalidOperand;
 }
 
 bool X86AsmParser::ParseDirective(AsmToken DirectiveID) {

@@ -32,6 +32,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Regex.h"
 #include <algorithm>
 #include <memory>
 
@@ -757,6 +758,9 @@ private:
 
   bool OmitRegisterFromClobberLists(unsigned RegNo) override;
 
+  unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
+                                      unsigned Kind) override;
+
   /// Parses AVX512 specific operand primitives: masked registers ({%k<NUM>}, {z})
   /// and memory broadcasting ({1to<NUM>}) primitives, updating Operands vector if required.
   /// return false if no parsing errors occurred, true otherwise.
@@ -984,6 +988,21 @@ bool X86AsmParser::ParseRegister(unsigned &RegNo,
     }
 
     if (RegNo != 0) {
+      EndLoc = Parser.getTok().getEndLoc();
+      Parser.Lex(); // Eat it.
+      return false;
+    }
+  }
+
+  if (RegNo == 0)
+  {
+    llvm::Regex TempRegex{"t[0-9]+"};
+    auto Id = Tok.getString();
+    if (TempRegex.match(Id))
+    {
+      int RegNum = -1;
+      assert(Id.drop_front().getAsInteger(0, RegNum));
+      RegNo = RegNum + X86::NUM_TARGET_REGS;
       EndLoc = Parser.getTok().getEndLoc();
       Parser.Lex(); // Eat it.
       return false;
@@ -2987,6 +3006,14 @@ bool X86AsmParser::MatchAndEmitIntelInstruction(SMLoc IDLoc, unsigned &Opcode,
 
 bool X86AsmParser::OmitRegisterFromClobberLists(unsigned RegNo) {
   return X86MCRegisterClasses[X86::SEGMENT_REGRegClassID].contains(RegNo);
+}
+
+unsigned X86AsmParser::validateTargetOperandClass(MCParsedAsmOperand &Op,
+                                                  unsigned Kind) {
+  if (Op.isReg() && Op.getReg() >= X86::NUM_TARGET_REGS)
+    return Match_Success; // Temporary register.
+  else
+    return Match_InvalidOperand;
 }
 
 bool X86AsmParser::ParseDirective(AsmToken DirectiveID) {

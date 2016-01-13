@@ -373,7 +373,8 @@ struct X86Operand : public MCParsedAsmOperand {
   bool isGR32orGR64() const {
     return Kind == Register &&
       (X86MCRegisterClasses[X86::GR32RegClassID].contains(getReg()) ||
-      X86MCRegisterClasses[X86::GR64RegClassID].contains(getReg()));
+      X86MCRegisterClasses[X86::GR64RegClassID].contains(getReg()) ||
+      getReg() >= X86::NUM_TARGET_REGS);
   }
 
   void addExpr(MCInst &Inst, const MCExpr *Expr) const {

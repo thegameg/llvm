@@ -2959,7 +2959,8 @@ bool X86AsmParser::OmitRegisterFromClobberLists(unsigned RegNo) {
 
 unsigned X86AsmParser::validateTargetOperandClass(MCParsedAsmOperand &Op,
                                                   unsigned Kind) {
-  if (Op.isReg() && Op.getReg() >= X86::NUM_TARGET_REGS)
+  auto MCK_GR32 = 49U;
+  if (Op.isReg() && Op.getReg() >= X86::NUM_TARGET_REGS && Kind == MCK_GR32)
     return Match_Success;
   else
     return Match_InvalidOperand;

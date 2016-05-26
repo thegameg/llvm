@@ -149,7 +149,7 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // TargetRegistry::RegisterMCInstrInfo(*T, createCpu0MCInstrInfo);
 
   // Register the MC register info.
-  // TargetRegistry::RegisterMCRegInfo(*T, createCpu0MCRegisterInfo);
+  TargetRegistry::RegisterMCRegInfo(*T, createCpu0MCRegisterInfo);
 
   // Register the elf streamer.
   // TargetRegistry::RegisterELFStreamer(*T, createMCStreamer);

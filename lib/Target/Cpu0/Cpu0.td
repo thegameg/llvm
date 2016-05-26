@@ -19,7 +19,7 @@ include "llvm/Target/Target.td"
 // Register File
 //===----------------------------------------------------------------------===//
 
-// FIXME: Define registers.
+include "Cpu0RegisterInfo.td"
 
 //===----------------------------------------------------------------------===//
 // Instructions File

@@ -861,6 +861,8 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return "ELF32-wasm";
     case ELF::EM_AMDGPU:
       return "ELF32-amdgpu";
+    case ELF::EM_CPU0:
+      return "ELF32-cpu0";
     default:
       return "ELF32-unknown";
     }
@@ -952,6 +954,14 @@ unsigned ELFObjectFile<ELFT>::getArch() const {
 
   case ELF::EM_BPF:
     return IsLittleEndian ? Triple::bpfel : Triple::bpfeb;
+
+  case ELF::EM_CPU0:
+    switch (EF.getHeader()->e_ident[ELF::EI_CLASS]) {
+    case ELF::ELFCLASS32:
+      return Triple::cpu0;
+    default:
+      report_fatal_error("Invalid ELFCLASS!");
+    }
 
   default:
     return Triple::UnknownArch;

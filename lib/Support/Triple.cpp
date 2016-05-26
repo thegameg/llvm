@@ -66,6 +66,7 @@ const char *Triple::getArchTypeName(ArchType Kind) {
   case wasm64:         return "wasm64";
   case renderscript32: return "renderscript32";
   case renderscript64: return "renderscript64";
+  case cpu0:           return "cpu0";
   }
 
   llvm_unreachable("Invalid ArchType!");
@@ -134,6 +135,7 @@ const char *Triple::getArchTypePrefix(ArchType Kind) {
   case shave:       return "shave";
   case wasm32:
   case wasm64:      return "wasm";
+  case cpu0:        return "cpu0";
   }
 }
 
@@ -286,6 +288,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("wasm64", wasm64)
     .Case("renderscript32", renderscript32)
     .Case("renderscript64", renderscript64)
+    .Case("cpu0", cpu0)
     .Default(UnknownArch);
 }
 
@@ -397,6 +400,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Case("wasm64", Triple::wasm64)
     .Case("renderscript32", Triple::renderscript32)
     .Case("renderscript64", Triple::renderscript64)
+    .Case("cpu0", Triple::cpu0)
     .Default(Triple::UnknownArch);
 
   // Some architectures require special parsing logic just to compute the
@@ -617,6 +621,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::wasm32:
   case Triple::wasm64:
   case Triple::xcore:
+  case Triple::cpu0:
     return Triple::ELF;
 
   case Triple::ppc:
@@ -1147,6 +1152,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::shave:
   case llvm::Triple::wasm32:
   case llvm::Triple::renderscript32:
+  case llvm::Triple::cpu0:
     return 32;
 
   case llvm::Triple::aarch64:
@@ -1223,6 +1229,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::shave:
   case Triple::wasm32:
   case Triple::renderscript32:
+  case Triple::cpu0:
     // Already 32-bit.
     break;
 
@@ -1258,6 +1265,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::xcore:
   case Triple::sparcel:
   case Triple::shave:
+  case Triple::cpu0:
     T.setArch(UnknownArch);
     break;
 
@@ -1420,6 +1428,7 @@ bool Triple::isLittleEndian() const {
   case Triple::xcore:
   case Triple::renderscript32:
   case Triple::renderscript64:
+  case Triple::cpu0:
     return true;
   default:
     return false;

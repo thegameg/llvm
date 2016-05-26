@@ -317,6 +317,8 @@ enum {
   // such numbers for an official value for WebAssembly. As soon as one is
   // allocated, this enum will be updated to use it.
   EM_WEBASSEMBLY   = 0x4157, // WebAssembly architecture
+
+  EM_CPU0          = 999, // Cpu0 tutorial.
 };
 
 // Object file classes.
@@ -620,6 +622,11 @@ enum {
 // ELF Relocation types for BPF
 enum {
 #include "ELFRelocs/BPF.def"
+};
+
+// ELF Relocation types for Cpu0
+enum {
+#include "ELFRelocs/Cpu0.def"
 };
 
 #undef ELF_RELOC

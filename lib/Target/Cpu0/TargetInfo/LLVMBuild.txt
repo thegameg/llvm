@@ -1,4 +1,4 @@
-;===- ./lib/Target/Cpu0/LLVMBuild.txt --------------------------*- Conf -*--===;
+;===- ./lib/Target/Cpu0/TargetInfo/LLVMBuild.txt ---------------*- Conf -*--===;
 ;
 ;                     The LLVM Compiler Infrastructure
 ;
@@ -15,21 +15,9 @@
 ;
 ;===------------------------------------------------------------------------===;
 
-[common]
-subdirectories = MCTargetDesc TargetInfo
-
 [component_0]
-type = TargetGroup
-name = Cpu0
-parent = Target
-has_asmparser = 0
-has_asmprinter = 0
-has_disassembler = 0
-has_jit = 0
-
-[component_1]
 type = Library
-name = Cpu0CodeGen
+name = Cpu0Info
 parent = Cpu0
-required_libraries = CodeGen Core MC Cpu0Desc Cpu0Info Support Target
+required_libraries = Support
 add_to_library_groups = Cpu0

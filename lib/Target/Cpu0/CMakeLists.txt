@@ -5,3 +5,6 @@ add_public_tablegen_target(Cpu0CommonTableGen)
 add_llvm_target(Cpu0CodeGen
   Cpu0TargetMachine.cpp
   )
+
+add_subdirectory(TargetInfo)
+add_subdirectory(MCTargetDesc)

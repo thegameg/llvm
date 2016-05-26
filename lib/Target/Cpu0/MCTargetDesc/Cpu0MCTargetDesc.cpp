@@ -146,7 +146,7 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // TargetRegistry::RegisterMCCodeGenInfo(*T, createCpu0MCCodeGenInfo);
 
   // Register the MC instruction info.
-  // TargetRegistry::RegisterMCInstrInfo(*T, createCpu0MCInstrInfo);
+  TargetRegistry::RegisterMCInstrInfo(*T, createCpu0MCInstrInfo);
 
   // Register the MC register info.
   TargetRegistry::RegisterMCRegInfo(*T, createCpu0MCRegisterInfo);

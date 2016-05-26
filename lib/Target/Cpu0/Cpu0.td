@@ -25,7 +25,8 @@ include "Cpu0RegisterInfo.td"
 // Instructions File
 //===----------------------------------------------------------------------===//
 
-// FIXME: Define instructions.
+include "Cpu0InstrInfo.td"
+def Cpu0InstrInfo : InstrInfo;
 
 //===----------------------------------------------------------------------===//
 // Cpu0 processors supported.

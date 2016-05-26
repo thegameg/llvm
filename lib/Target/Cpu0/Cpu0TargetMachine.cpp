@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "Cpu0TargetMachine.h"
+#include "Cpu0ISelDAGToDAG.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/Support/TargetRegistry.h"
 using namespace llvm;
 
@@ -23,12 +25,38 @@ static std::string computeDataLayout(const Triple &TT) {
   return "e-p:32:32";
 }
 
+static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
+  if (!RM.hasValue())
+    return Reloc::Static;
+  return *RM;
+}
+
 Cpu0TargetMachine::Cpu0TargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
-                                     Reloc::Model RM, CodeModel::Model CM,
-                                     CodeGenOpt::Level OL)
-    : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options, RM, CM,
-                        OL)
-{
+                                     Optional<Reloc::Model> RM,
+                                     CodeModel::Model CM, CodeGenOpt::Level OL)
+    : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
+                        getEffectiveRelocModel(RM), CM, OL),
+      TLOF(make_unique<Cpu0TargetObjectFile>()),
+      Subtarget(TT, CPU, FS, *this) {
+  initAsmInfo();
+}
+
+TargetPassConfig *Cpu0TargetMachine::createPassConfig(PassManagerBase &PM) {
+  struct Cpu0PassConfig : public TargetPassConfig {
+    Cpu0PassConfig(Cpu0TargetMachine *TM, PassManagerBase &PM)
+        : TargetPassConfig(TM, PM) {}
+
+    Cpu0TargetMachine &getCpu0TargetMachine() const {
+      return getTM<Cpu0TargetMachine>();
+    }
+
+    bool addInstSelector() override {
+      // FIXME : Add instruction selector.
+      return false;
+    }
+  };
+
+  return new Cpu0PassConfig(this, PM);
 }

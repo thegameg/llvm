@@ -11,12 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Cpu0MCAsmInfo.h"
 #include "Cpu0MCTargetDesc.h"
-#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/MC/MCInstrDesc.h"
 #include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/Support/TargetRegistry.h"
-#include "llvm/ADT/STLExtras.h"
 
 using namespace llvm;
 
@@ -41,13 +42,6 @@ static MCRegisterInfo *createCpu0MCRegisterInfo(const Triple &TT) {
   return X;
 }
 
-/*
-static MCSubtargetInfo *createCpu0MCSubtargetInfo(const Triple &TT,
-                                                  StringRef CPU, StringRef FS) {
-  CPU = Cpu0_MC::selectCpu0CPU(TT, CPU);
-  return createCpu0MCSubtargetInfoImpl(TT, CPU, FS);
-}
-
 static MCAsmInfo *createCpu0MCAsmInfo(const MCRegisterInfo &MRI,
                                       const Triple &TT) {
   MCAsmInfo *MAI = new Cpu0MCAsmInfo(TT);
@@ -57,6 +51,13 @@ static MCAsmInfo *createCpu0MCAsmInfo(const MCRegisterInfo &MRI,
   MAI->addInitialFrameState(Inst);
 
   return MAI;
+}
+
+/*
+static MCSubtargetInfo *createCpu0MCSubtargetInfo(const Triple &TT,
+                                                  StringRef CPU, StringRef FS) {
+  CPU = Cpu0_MC::selectCpu0CPU(TT, CPU);
+  return createCpu0MCSubtargetInfoImpl(TT, CPU, FS);
 }
 
 static MCCodeGenInfo *createCpu0MCCodeGenInfo(const Triple &TT, Reloc::Model RM,
@@ -139,8 +140,9 @@ static MCInstrAnalysis *createCpu0MCInstrAnalysis(const MCInstrInfo *Info) {
 
 extern "C" void LLVMInitializeCpu0TargetMC() {
   Target *T = &TheCpu0Target;
+
   // Register the MC asm info.
-  // RegisterMCAsmInfoFn X(*T, createCpu0MCAsmInfo);
+  RegisterMCAsmInfoFn X(*T, createCpu0MCAsmInfo);
 
   // Register the MC codegen info.
   // TargetRegistry::RegisterMCCodeGenInfo(*T, createCpu0MCCodeGenInfo);

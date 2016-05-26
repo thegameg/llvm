@@ -24,8 +24,11 @@ extern llvm::Target TheCpu0Target;
 class Cpu0TargetMachine : public LLVMTargetMachine {
 public:
   Cpu0TargetMachine(const Target &T, const Triple &TT, StringRef CPU,
-                    StringRef FS, const TargetOptions &Options, Reloc::Model RM,
-                    CodeModel::Model CM, CodeGenOpt::Level OL);
+                    StringRef FS, const TargetOptions &Options,
+                    Optional<Reloc::Model> RM, CodeModel::Model CM,
+                    CodeGenOpt::Level OL);
+
+  TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 };
 
 } // end namespace llvm

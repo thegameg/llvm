@@ -28,9 +28,9 @@ TEST4:
         .ascii "\1\01\07\08\001\0001\200\0"
         
 # CHECK: TEST5:
-# CHECK: .ascii "\b\f\n\r\t\\\""
+# CHECK: .ascii "\b\f\n\r\t\v\\\""
 TEST5:
-        .ascii "\b\f\n\r\t\\\""
+        .ascii "\b\f\n\r\t\v\\\""
         
 # CHECK: TEST6:
 # CHECK: .byte 66

@@ -647,6 +647,7 @@ static void PrintQuotedString(StringRef Data, raw_ostream &OS) {
       case '\n': OS << "\\n"; break;
       case '\r': OS << "\\r"; break;
       case '\t': OS << "\\t"; break;
+      case '\v': OS << "\\v"; break;
       default:
         OS << '\\';
         OS << toOctal(C >> 6);

@@ -2429,6 +2429,7 @@ bool AsmParser::parseEscapedString(std::string &Data) {
     case 'n': Data += '\n'; break;
     case 'r': Data += '\r'; break;
     case 't': Data += '\t'; break;
+    case 'v': Data += '\v'; break;
     case '"': Data += '"'; break;
     case '\\': Data += '\\'; break;
     }

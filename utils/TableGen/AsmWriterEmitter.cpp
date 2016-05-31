@@ -558,10 +558,15 @@ void AsmWriterEmitter::EmitGetRegisterName(raw_ostream &O) {
   if (hasAltNames)
     O << "\ngetRegisterName(unsigned RegNo, unsigned AltIdx) {\n";
   else
-    O << "getRegisterName(unsigned RegNo) {\n";
-  O << "  assert(RegNo && RegNo < " << (Registers.size()+1)
-    << " && \"Invalid register number!\");\n"
-    << "\n";
+    O << "getRegisterName(unsigned RegNo) {\n"
+         "  assert(RegNo && \"Invalid register number!\");\n"
+         "  if (RegNo >= " << (Registers.size()+1) << ")\n"
+         "  {\n"
+         "    auto RealReg = RegNo - " << (Registers.size()+1) << ";\n"
+         "    auto Leaks = new std::string();\n"
+         "    *Leaks += \"t\" + std::to_string(RealReg);\n"
+         "    return Leaks->c_str();\n"
+         "  }\n";
 
   if (hasAltNames) {
     for (const Record *R : AltNameIndices)

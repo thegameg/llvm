@@ -48,6 +48,7 @@
 #include "llvm/Support/TargetParser.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Regex.h"
 
 using namespace llvm;
 
@@ -3225,6 +3226,19 @@ int ARMAsmParser::tryParseRegister() {
       .Default(0);
   }
   if (!RegNum) {
+    // Check for temporary registers for TC-Y.
+    llvm::Regex TempReg{"t[0-9]+"};
+    auto Id = Tok.getString();
+    if (TempReg.match(Id))
+    {
+      int RegNo = -1;
+      auto to_int = Id.drop_front().getAsInteger(0, RegNo);
+      assert(!to_int);
+      RegNum = RegNo + ARM::NUM_TARGET_REGS;
+      Parser.Lex(); // Eat it.
+      return RegNum;
+    }
+
     // Check for aliases registered via .req. Canonicalize to lower case.
     // That's more consistent since register names are case insensitive, and
     // it's how the original entry was passed in from MC/MCParser/AsmParser.
@@ -10511,6 +10525,8 @@ unsigned ARMAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
   // If the kind is a token for a literal immediate, check if our asm
   // operand matches. This is for InstAliases which have a fixed-value
   // immediate in the syntax.
+  if (Op.isReg() && Op.getReg() >= ARM::NUM_TARGET_REGS && Kind == MCK_GPR)
+    return Match_Success;
   switch (Kind) {
   default: break;
   case MCK__35_0:

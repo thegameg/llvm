@@ -13,6 +13,7 @@
 
 #include "Cpu0MCAsmInfo.h"
 #include "Cpu0MCTargetDesc.h"
+#include "Cpu0TargetStreamer.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/MC/MCInstrDesc.h"
 #include "llvm/MC/MCInstrInfo.h"
@@ -88,6 +89,7 @@ static MCStreamer *createMCStreamer(const Triple &T, MCContext &Context,
     S = createCpu0NaClELFStreamer(Context, MAB, OS, Emitter, RelaxAll);
   return S;
 }
+*/
 
 static MCTargetStreamer *createCpu0AsmTargetStreamer(MCStreamer &S,
                                                      formatted_raw_ostream &OS,
@@ -96,15 +98,18 @@ static MCTargetStreamer *createCpu0AsmTargetStreamer(MCStreamer &S,
   return new Cpu0TargetAsmStreamer(S, OS);
 }
 
+/*
 static MCTargetStreamer *createCpu0NullTargetStreamer(MCStreamer &S) {
   return new Cpu0TargetStreamer(S);
 }
+*/
 
 static MCTargetStreamer *
 createCpu0ObjectTargetStreamer(MCStreamer &S, const MCSubtargetInfo &STI) {
   return new Cpu0TargetELFStreamer(S, STI);
 }
 
+/*
 namespace {
 
 class Cpu0MCInstrAnalysis : public MCInstrAnalysis {
@@ -153,8 +158,8 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // Register the MC register info.
   TargetRegistry::RegisterMCRegInfo(*T, createCpu0MCRegisterInfo);
 
-  // Register the elf streamer.
-  // TargetRegistry::RegisterELFStreamer(*T, createMCStreamer);
+  // Register the asm target streamer.
+  TargetRegistry::RegisterAsmTargetStreamer(*T, createCpu0AsmTargetStreamer);
 
   // Register the asm target streamer.
   // TargetRegistry::RegisterAsmTargetStreamer(*T, createCpu0AsmTargetStreamer);
@@ -168,11 +173,8 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // Register the MC instruction analyzer.
   // TargetRegistry::RegisterMCInstrAnalysis(*T, createCpu0MCInstrAnalysis);
 
-  // Register the MCInstPrinter.
-  // TargetRegistry::RegisterMCInstPrinter(*T, createCpu0MCInstPrinter);
-
-  // TargetRegistry::RegisterObjectTargetStreamer(
-  //*T, createCpu0ObjectTargetStreamer);
+  TargetRegistry::RegisterObjectTargetStreamer(*T,
+                                               createCpu0ObjectTargetStreamer);
 
   // Register the MC Code Emitter
   /*for (Target *T : {&TheCpu0TargetBig, &TheCpu064Target})

@@ -10019,7 +10019,9 @@ unsigned ARMAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
   // If the kind is a token for a literal immediate, check if our asm
   // operand matches. This is for InstAliases which have a fixed-value
   // immediate in the syntax.
-  if (Op.isReg() && Op.getReg() >= ARM::NUM_TARGET_REGS && Kind == MCK_GPR)
+
+  if (Op.isReg() && Op.getReg() >= ARM::NUM_TARGET_REGS
+      && (Kind == MCK_GPR || Kind == MCK_GPRnopc))
     return Match_Success;
   switch (Kind) {
   default: break;

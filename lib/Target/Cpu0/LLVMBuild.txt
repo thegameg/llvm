@@ -16,14 +16,14 @@
 ;===------------------------------------------------------------------------===;
 
 [common]
-subdirectories = MCTargetDesc TargetInfo
+subdirectories = InstPrinter MCTargetDesc TargetInfo
 
 [component_0]
 type = TargetGroup
 name = Cpu0
 parent = Target
 has_asmparser = 0
-has_asmprinter = 0
+has_asmprinter = 1
 has_disassembler = 0
 has_jit = 0
 
@@ -31,5 +31,5 @@ has_jit = 0
 type = Library
 name = Cpu0CodeGen
 parent = Cpu0
-required_libraries = CodeGen Core MC Cpu0Desc Cpu0Info Support Target
+required_libraries = CodeGen Core MC Cpu0Desc Cpu0Info Support Target AsmPrinter Cpu0AsmPrinter
 add_to_library_groups = Cpu0

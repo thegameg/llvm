@@ -11,13 +11,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Cpu0MCAsmInfo.h"
 #include "Cpu0MCTargetDesc.h"
+#include "Cpu0MCAsmInfo.h"
 #include "Cpu0TargetStreamer.h"
+#include "InstPrinter/Cpu0InstPrinter.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/MC/MCInstrDesc.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCSchedule.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/MC/SubtargetFeature.h"
 #include "llvm/Support/TargetRegistry.h"
 
 using namespace llvm;
@@ -70,6 +74,7 @@ static MCCodeGenInfo *createCpu0MCCodeGenInfo(const Triple &TT, Reloc::Model RM,
   X->initMCCodeGenInfo(RM, CM, OL);
   return X;
 }
+*/
 
 static MCInstPrinter *createCpu0MCInstPrinter(const Triple &T,
                                               unsigned SyntaxVariant,
@@ -79,6 +84,7 @@ static MCInstPrinter *createCpu0MCInstPrinter(const Triple &T,
   return new Cpu0InstPrinter(MAI, MII, MRI);
 }
 
+/*
 static MCStreamer *createMCStreamer(const Triple &T, MCContext &Context,
                                     MCAsmBackend &MAB, raw_pwrite_stream &OS,
                                     MCCodeEmitter *Emitter, bool RelaxAll) {
@@ -170,8 +176,8 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // Register the MC subtarget info.
   // TargetRegistry::RegisterMCSubtargetInfo(*T, createCpu0MCSubtargetInfo);
 
-  // Register the MC instruction analyzer.
-  // TargetRegistry::RegisterMCInstrAnalysis(*T, createCpu0MCInstrAnalysis);
+  // Register the MCInstPrinter.
+  TargetRegistry::RegisterMCInstPrinter(*T, createCpu0MCInstPrinter);
 
   TargetRegistry::RegisterObjectTargetStreamer(*T,
                                                createCpu0ObjectTargetStreamer);

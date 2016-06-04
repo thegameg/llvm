@@ -38,12 +38,9 @@ def Cpu0InstrInfo : InstrInfo;
 // AsmWriter and AsmParser.
 //===----------------------------------------------------------------------===//
 
-// FIXME: Add AsmWriter.
-
 // FIXME: Add AsmParser.
 
 def Cpu0 : Target {
   let InstructionSet = Cpu0InstrInfo;
   // FIXME: AsmParser.
-  // FIXME: AsmWriter.
 }

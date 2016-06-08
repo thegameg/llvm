@@ -9,6 +9,7 @@ add_llvm_target(Cpu0CodeGen
   Cpu0AsmPrinter.cpp
   Cpu0RegisterInfo.cpp
   Cpu0TargetMachine.cpp
+  Cpu0TargetObjectFile.cpp
   )
 
 add_subdirectory(InstPrinter)

@@ -38,8 +38,7 @@ Cpu0TargetMachine::Cpu0TargetMachine(const Target &T, const Triple &TT,
                                      CodeModel::Model CM, CodeGenOpt::Level OL)
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(RM), CM, OL),
-      TLOF(make_unique<Cpu0TargetObjectFile>()),
-      Subtarget(TT, CPU, FS, *this) {
+      TLOF(make_unique<Cpu0TargetObjectFile>()) {
   initAsmInfo();
 }
 

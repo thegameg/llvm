@@ -14,7 +14,10 @@
 #ifndef LLVM_LIB_TARGET_CPU0_CPU0TARGETMACHINE_H
 #define LLVM_LIB_TARGET_CPU0_CPU0TARGETMACHINE_H
 
+#include "Cpu0TargetObjectFile.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/Target/TargetMachine.h"
+#include <memory>
 #include <sstream>
 
 namespace llvm {
@@ -22,6 +25,8 @@ namespace llvm {
 extern llvm::Target TheCpu0Target;
 
 class Cpu0TargetMachine : public LLVMTargetMachine {
+  std::unique_ptr<TargetLoweringObjectFile> TLOF;
+
 public:
   Cpu0TargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                     StringRef FS, const TargetOptions &Options,
@@ -29,6 +34,10 @@ public:
                     CodeGenOpt::Level OL);
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
+
+  TargetLoweringObjectFile *getObjFileLowering() const override {
+    return TLOF.get();
+  }
 };
 
 } // end namespace llvm

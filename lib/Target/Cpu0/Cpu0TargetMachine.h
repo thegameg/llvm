@@ -14,6 +14,7 @@
 #ifndef LLVM_LIB_TARGET_CPU0_CPU0TARGETMACHINE_H
 #define LLVM_LIB_TARGET_CPU0_CPU0TARGETMACHINE_H
 
+#include "Cpu0Subtarget.h"
 #include "Cpu0TargetObjectFile.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/Target/TargetMachine.h"
@@ -26,6 +27,7 @@ extern llvm::Target TheCpu0Target;
 
 class Cpu0TargetMachine : public LLVMTargetMachine {
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
+  Cpu0Subtarget Subtarget;
 
 public:
   Cpu0TargetMachine(const Target &T, const Triple &TT, StringRef CPU,
@@ -37,6 +39,10 @@ public:
 
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
+  }
+
+  const Cpu0Subtarget *getSubtargetImpl(const Function &F) const override {
+    return &Subtarget;
   }
 };
 

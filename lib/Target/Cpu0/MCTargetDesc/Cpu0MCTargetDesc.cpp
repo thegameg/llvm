@@ -29,11 +29,18 @@ using namespace llvm;
 #define GET_INSTRINFO_MC_DESC
 #include "Cpu0GenInstrInfo.inc"
 
-//#define GET_SUBTARGETINFO_MC_DESC
-//#include "Cpu0GenSubtargetInfo.inc"
+#define GET_SUBTARGETINFO_MC_DESC
+#include "Cpu0GenSubtargetInfo.inc"
 
 #define GET_REGINFO_MC_DESC
 #include "Cpu0GenRegisterInfo.inc"
+
+StringRef Cpu0_MC::selectCpu0CPU(const Triple &TT, StringRef CPU) {
+  if (CPU.empty() || CPU == "generic") {
+    CPU = "cpu0";
+  }
+  return CPU;
+}
 
 static MCInstrInfo *createCpu0MCInstrInfo() {
   MCInstrInfo *X = new MCInstrInfo();
@@ -58,13 +65,13 @@ static MCAsmInfo *createCpu0MCAsmInfo(const MCRegisterInfo &MRI,
   return MAI;
 }
 
-/*
 static MCSubtargetInfo *createCpu0MCSubtargetInfo(const Triple &TT,
                                                   StringRef CPU, StringRef FS) {
   CPU = Cpu0_MC::selectCpu0CPU(TT, CPU);
   return createCpu0MCSubtargetInfoImpl(TT, CPU, FS);
 }
 
+/*
 static MCCodeGenInfo *createCpu0MCCodeGenInfo(const Triple &TT, Reloc::Model RM,
                                               CodeModel::Model CM,
                                               CodeGenOpt::Level OL) {
@@ -170,8 +177,8 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
   // Register the asm target streamer.
   // TargetRegistry::RegisterAsmTargetStreamer(*T, createCpu0AsmTargetStreamer);
 
-  // TargetRegistry::RegisterNullTargetStreamer(*T,
-  // createCpu0NullTargetStreamer);
+  // Register the MC subtarget info.
+  TargetRegistry::RegisterMCSubtargetInfo(*T, createCpu0MCSubtargetInfo);
 
   // Register the MC subtarget info.
   // TargetRegistry::RegisterMCSubtargetInfo(*T, createCpu0MCSubtargetInfo);

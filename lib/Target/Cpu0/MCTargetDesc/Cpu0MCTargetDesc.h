@@ -53,10 +53,10 @@ MCAsmBackend *createCpu0AsmBackendEL64(const Target &T,
 MCObjectWriter *createCpu0ELFObjectWriter(raw_pwrite_stream &OS, uint8_t OSABI,
                                           bool IsLittleEndian, bool Is64Bit);
 
+*/
 namespace Cpu0_MC {
 StringRef selectCpu0CPU(const Triple &TT, StringRef CPU);
 }
-*/
 
 } // End llvm namespace
 

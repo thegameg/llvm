@@ -20,8 +20,19 @@
 #include "Cpu0GenRegisterInfo.inc"
 
 namespace llvm {
-struct Cpu0RegisterInfo : public Cpu0GenRegisterInfo {
+class Cpu0RegisterInfo : public Cpu0GenRegisterInfo {
+public:
+  Cpu0RegisterInfo();
 
+  const MCPhysReg *getCalleeSavedRegs(const MachineFunction *MF) const override;
+  /// Debug information queries.
+  unsigned getFrameRegister(const MachineFunction &MF) const override;
+  BitVector getReservedRegs(const MachineFunction &MF) const override;
+
+  /// Stack Frame Processing Methods
+  void eliminateFrameIndex(MachineBasicBlock::iterator II, int SPAdj,
+                           unsigned FIOperandNum,
+                           RegScavenger *RS = nullptr) const override;
 };
 
 } // end namespace llvm

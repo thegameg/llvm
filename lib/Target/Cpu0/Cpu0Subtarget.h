@@ -15,13 +15,10 @@
 #define LLVM_LIB_TARGET_Cpu0_Cpu0SUBTARGET_H
 
 #include "Cpu0FrameLowering.h"
-#include "Cpu0FrameLowering.h"
-#include "Cpu0ISelLowering.h"
 #include "Cpu0ISelLowering.h"
 #include "Cpu0InstrInfo.h"
 #include "Cpu0RegisterInfo.h"
 #include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 
 #define GET_SUBTARGETINFO_HEADER
@@ -37,6 +34,10 @@ class Cpu0Subtarget : public Cpu0GenSubtargetInfo {
 
   Cpu0TargetLowering TargetLowering;
 
+  Cpu0InstrInfo InstrInfo;
+
+  Cpu0RegisterInfo RegisterInfo;
+
 public:
   /// This constructor initializes the data members to match that
   /// of the specified triple.
@@ -51,6 +52,11 @@ public:
 
   const Cpu0TargetLowering *getTargetLowering() const override {
     return &TargetLowering;
+  }
+
+  const Cpu0InstrInfo *getInstrInfo() const override { return &InstrInfo; }
+  const Cpu0RegisterInfo *getRegisterInfo() const override {
+    return &RegisterInfo;
   }
 };
 } // End llvm namespace

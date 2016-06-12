@@ -37,16 +37,7 @@ MCCodeEmitter *createCpu0MCCodeEmitter(const MCInstrInfo &MCII,
                                        MCContext &Ctx);
 
 /*
-MCAsmBackend *createCpu0AsmBackendEB32(const Target &T,
-                                       const MCRegisterInfo &MRI,
-                                       const Triple &TT, StringRef CPU);
 MCAsmBackend *createCpu0AsmBackendEL32(const Target &T,
-                                       const MCRegisterInfo &MRI,
-                                       const Triple &TT, StringRef CPU);
-MCAsmBackend *createCpu0AsmBackendEB64(const Target &T,
-                                       const MCRegisterInfo &MRI,
-                                       const Triple &TT, StringRef CPU);
-MCAsmBackend *createCpu0AsmBackendEL64(const Target &T,
                                        const MCRegisterInfo &MRI,
                                        const Triple &TT, StringRef CPU);
 
@@ -69,7 +60,7 @@ StringRef selectCpu0CPU(const Triple &TT, StringRef CPU);
 #define GET_INSTRINFO_ENUM
 #include "Cpu0GenInstrInfo.inc"
 
-//#define GET_SUBTARGETINFO_ENUM
-//#include "Cpu0GenSubtargetInfo.inc"
+#define GET_SUBTARGETINFO_ENUM
+#include "Cpu0GenSubtargetInfo.inc"
 
 #endif

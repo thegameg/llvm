@@ -197,13 +197,7 @@ extern "C" void LLVMInitializeCpu0TargetMC() {
     TargetRegistry::RegisterMCCodeEmitter(*T, createCpu0MCCodeEmitterEL);
 
   // Register the asm backend.
-  TargetRegistry::RegisterMCAsmBackend(TheCpu0TargetBig,
-                                       createCpu0AsmBackendEB32);
   TargetRegistry::RegisterMCAsmBackend(TheCpu0TargetLittle,
                                        createCpu0AsmBackendEL32);
-  TargetRegistry::RegisterMCAsmBackend(TheCpu064Target,
-                                       createCpu0AsmBackendEB64);
-  TargetRegistry::RegisterMCAsmBackend(TheCpu064elTarget,
-                                       createCpu0AsmBackendEL64);
   */
 }

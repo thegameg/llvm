@@ -31,5 +31,15 @@ has_jit = 0
 type = Library
 name = Cpu0CodeGen
 parent = Cpu0
-required_libraries = CodeGen Core MC Cpu0Desc Cpu0Info Support Target AsmPrinter Cpu0AsmPrinter
+required_libraries =
+  AsmPrinter
+  CodeGen
+  Core
+  Cpu0AsmPrinter
+  Cpu0Desc
+  Cpu0Info
+  MC
+  SelectionDAG
+  Support
+  Target
 add_to_library_groups = Cpu0

@@ -10,10 +10,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Cpu0ISelDAGToDAG.h"
 #include "Cpu0TargetMachine.h"
 #include "Cpu0ISelDAGToDAG.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/Support/TargetRegistry.h"
+
 using namespace llvm;
 
 extern "C" void LLVMInitializeCpu0Target() {
@@ -53,7 +55,8 @@ TargetPassConfig *Cpu0TargetMachine::createPassConfig(PassManagerBase &PM) {
     }
 
     bool addInstSelector() override {
-      // FIXME : Add instruction selector.
+      // Add the instruction selector as a pass.
+      addPass(new Cpu0DAGToDAGISel(getCpu0TargetMachine()));
       return false;
     }
   };

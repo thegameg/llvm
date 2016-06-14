@@ -32,11 +32,11 @@ class Cpu0Subtarget : public Cpu0GenSubtargetInfo {
 
   Cpu0FrameLowering FrameLowering;
 
-  Cpu0TargetLowering TargetLowering;
-
   Cpu0InstrInfo InstrInfo;
 
   Cpu0RegisterInfo RegisterInfo;
+
+  Cpu0TargetLowering TargetLowering;
 
 public:
   /// This constructor initializes the data members to match that

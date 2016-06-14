@@ -40,7 +40,21 @@ class Cpu0Subtarget;
 
 class Cpu0TargetLowering : public TargetLowering {
 public:
-  explicit Cpu0TargetLowering(const Cpu0TargetMachine &TM);
+  explicit Cpu0TargetLowering(const Cpu0TargetMachine &TM,
+                              const Cpu0Subtarget &STI);
+
+  const char *getTargetNodeName(unsigned Opcode) const override;
+
+  SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
+                               bool isVarArg,
+                               const SmallVectorImpl<ISD::InputArg> &Ins,
+                               const SDLoc &dl, SelectionDAG &DAG,
+                               SmallVectorImpl<SDValue> &InVals) const override;
+
+  SDValue LowerReturn(SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
+                      const SmallVectorImpl<ISD::OutputArg> &Outs,
+                      const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
+                      SelectionDAG &DAG) const override;
 };
 }
 

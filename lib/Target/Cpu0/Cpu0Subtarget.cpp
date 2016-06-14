@@ -24,4 +24,4 @@ using namespace llvm;
 Cpu0Subtarget::Cpu0Subtarget(const Triple &TT, StringRef CPU, StringRef FS,
                              const Cpu0TargetMachine &TM)
     : Cpu0GenSubtargetInfo(TT, CPU, FS), TargetTriple{TT}, FrameLowering{8},
-      TargetLowering{TM}, InstrInfo{*this}, RegisterInfo{} {}
+      InstrInfo{*this}, RegisterInfo{}, TargetLowering{TM, *this} {}

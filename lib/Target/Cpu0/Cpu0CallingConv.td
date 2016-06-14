@@ -1,4 +1,4 @@
-//===-- Cpu0.td - Describe the Cpu0 Target Machine ---------*- tablegen -*-===//
+//===-- Cpu0CallingConv.td - Calling Conventions for Cpu0 --*- tablegen -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -6,39 +6,26 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-// This is the top level entry point for the Cpu0 target.
+// This describes the calling conventions for Cpu0 architecture.
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//
-// Target-independent interfaces
+// Cpu0 Calling Convention
 //===----------------------------------------------------------------------===//
 
-include "llvm/Target/Target.td"
+def CC_Cpu0 : CallingConv<[
+  CCIfType<[ i1, i8, i16 ], CCPromoteToType<i32>>,
+  CCIfType<[ i32 ], CCAssignToReg<[ R4, R5 ]>>
+]>;
 
 //===----------------------------------------------------------------------===//
-// Register File, Calling Conv, Instruction Descriptions
+// Return Value Calling Convention
 //===----------------------------------------------------------------------===//
 
-include "Cpu0RegisterInfo.td"
-
-include "Cpu0InstrInfo.td"
-def Cpu0InstrInfo : InstrInfo;
-
-include "Cpu0CallingConv.td"
+def RetCC_Cpu0 : CallingConv<[ CCIfType<[ i32 ], CCAssignToReg<[ R2, R3 ]>> ]>;
 
 //===----------------------------------------------------------------------===//
-// Cpu0 processors supported.
+// Callee-saved Registers.
 //===----------------------------------------------------------------------===//
 
-// FIXME: Define processors.
-
-//===----------------------------------------------------------------------===//
-// AsmWriter and AsmParser.
-//===----------------------------------------------------------------------===//
-
-// FIXME: Add AsmParser.
-
-def Cpu0 : Target {
-  let InstructionSet = Cpu0InstrInfo;
-  // FIXME: AsmParser.
-}
+def CSR : CalleeSavedRegs<(add R9, R10)>;

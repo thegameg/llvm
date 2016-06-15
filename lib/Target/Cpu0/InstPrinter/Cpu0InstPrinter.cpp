@@ -29,14 +29,7 @@ void Cpu0InstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
 
 void Cpu0InstPrinter::printInst(const MCInst *MI, raw_ostream &O,
                                 StringRef Annot, const MCSubtargetInfo &STI) {
-  switch (MI->getOpcode()) {
-  default:
-    break;
-  case Cpu0::NOP:
-    O << "\tnop\n";
-    break;
-  }
-  O << "\n";
+  printInstruction(MI, O);
 }
 
 void Cpu0InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,

@@ -30,8 +30,7 @@ Cpu0RegisterInfo::Cpu0RegisterInfo() : Cpu0GenRegisterInfo(Cpu0::LR) {}
 
 const MCPhysReg *
 Cpu0RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  return 0;
-  //return CSR_O32_SaveList;
+  return CSR_SaveList;
 }
 
 unsigned Cpu0RegisterInfo::getFrameRegister(const MachineFunction &MF) const {

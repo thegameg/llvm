@@ -38,6 +38,21 @@ Cpu0TargetLowering::Cpu0TargetLowering(const Cpu0TargetMachine &TM,
 /// LowerFormalArguments - transform physical registers into virtual registers
 /// and generate load operations for arguments places on the stack.
 
+const char *Cpu0TargetLowering::getTargetNodeName(unsigned Opcode) const {
+  switch ((Cpu0ISD::NodeType)Opcode) {
+  case Cpu0ISD::FIRST_NUMBER:
+    break;
+#define CASE(X)                                                                \
+  case Cpu0ISD::X:                                                             \
+    return #X;
+    CASE(JmpLink)
+    CASE(Ret)
+#undef CASE
+  }
+
+  return nullptr;
+}
+
 SDValue Cpu0TargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,

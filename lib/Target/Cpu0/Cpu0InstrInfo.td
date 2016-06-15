@@ -24,7 +24,8 @@ def imm32Pat : PatLeaf<(imm), [{ return isInt<32>(N->getSExtValue()); }]>;
 // Cpu0 profiles and nodes
 //===----------------------------------------------------------------------===//
 
-def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone, [SDNPHasChain, SDNPOptInGlue]>;
+def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone,
+                     [ SDNPHasChain, SDNPOptInGlue, SDNPVariadic ]>;
 
 //===----------------------------------------------------------------------===//
 // Describe instructions
@@ -34,8 +35,10 @@ def Cpu0Ret : SDNode<"Cpu0ISD::Ret", SDTNone, [SDNPHasChain, SDNPOptInGlue]>;
 
 def NOP   : FN<0x0, "nop", [], NoItinerary>;
 
-// FIXME: Add alias on jr %lr.
-def Ret   : FN<0x3c, "ret", [(Cpu0Ret)], NoItinerary>;
+let isReturn = 1, isTerminator = 1 in {
+  // FIXME: Add alias on jr %lr.
+  def Ret : FN<0x3c, "ret", [ (Cpu0Ret) ], NoItinerary>;
+}
 
 def ADDrr : FL<0x13, (outs CPURegs:$ra), (ins CPURegs:$rb, CPURegs:$rc),
                "add\t$ra, $rb, $rc", [(set CPURegs:$ra,

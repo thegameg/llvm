@@ -21,6 +21,7 @@
 namespace llvm {
 
 class Cpu0AsmPrinter : public AsmPrinter {
+  Cpu0MCInstLower instLower;
 
 public:
   Cpu0AsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -28,6 +29,7 @@ public:
 
   const char *getPassName() const override { return "Cpu0 Assembly Printer"; }
 
+  void EmitInstruction(const MachineInstr *MI) override;
   void EmitFunctionEntryLabel() override;
 };
 

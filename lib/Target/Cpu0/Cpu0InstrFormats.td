@@ -30,6 +30,7 @@ class Format<bits<2> val> {
 def A : Format<0>;
 def L : Format<1>;
 def J : Format<2>;
+def N : Format<3>;
 
 // Generic Cpu0 Format
 class Cpu0Inst<bits<8> op, dag outs, dag ins, string asmstr, list<dag> pattern,
@@ -92,4 +93,12 @@ class FJ<bits<8> op, dag outs, dag ins, string asmstr, list<dag> pattern,
   bits<24> cx;
 
   let Inst{23 - 0} = cx;
+}
+
+//===----------------------------------------------------------------------===//
+// Format N instruction class in Cpu0 : <|opcode|>
+//===----------------------------------------------------------------------===//
+
+class FN<bits<8> op, string asmstr, list<dag> pattern, InstrItinClass itin>
+    : Cpu0Inst<op, (outs), (ins), asmstr, pattern, itin, N> {
 }

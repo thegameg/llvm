@@ -30,7 +30,10 @@ include "Cpu0CallingConv.td"
 // Cpu0 processors supported.
 //===----------------------------------------------------------------------===//
 
-// FIXME: Define processors.
+include "Cpu0Schedule.td"
+
+// FIXME: Add scheduling.
+def : ProcessorModel<"cpu0", NoSchedModel, []>;
 
 //===----------------------------------------------------------------------===//
 // AsmWriter and AsmParser.

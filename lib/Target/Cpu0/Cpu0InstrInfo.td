@@ -44,6 +44,6 @@ def ADDrr : FL<0x13, (outs CPURegs:$ra), (ins CPURegs:$rb, CPURegs:$rc),
                "add\t$ra, $rb, $rc", [(set CPURegs:$ra,
                (add CPURegs:$rb, CPURegs:$rc))], NoItinerary>;
 
-def ADDri : FL<0x13, (outs CPURegs:$ra), (ins CPURegs:$rb, imm32:$c),
+def ADDri : FL<0x09, (outs CPURegs:$ra), (ins CPURegs:$rb, imm32:$c),
                "add\t$ra, $rb, $c", [(set CPURegs:$ra,
                (add CPURegs:$rb, imm32Pat:$c))], NoItinerary>;

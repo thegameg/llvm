@@ -20,6 +20,9 @@
 #define GET_INSTRINFO_ENUM
 #include "Cpu0GenInstrInfo.inc"
 
+#define GET_REGINFO_ENUM
+#include "Cpu0GenRegisterInfo.inc"
+
 //===----------------------------------------------------------------------===//
 // Instruction Selector Implementation
 //===----------------------------------------------------------------------===//

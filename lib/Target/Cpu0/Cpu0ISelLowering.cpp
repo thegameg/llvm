@@ -58,7 +58,9 @@ SDValue Cpu0TargetLowering::LowerFormalArguments(
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
 
-  auto& MF = DAG.getMachineFunction();
+  assert(!IsVarArg && "Variable arguments not supported.");
+
+  auto &MF = DAG.getMachineFunction();
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
@@ -89,24 +91,25 @@ Cpu0TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   CCInfo.AnalyzeReturn(Outs, RetCC_Cpu0);
 
   SDValue Flag;
-  SmallVector<SDValue, 6> RetOps;
-  RetOps.push_back(Chain); // Operand #0 = Chain (updated below)
+  SmallVector<SDValue, 1> RetOps;
+
+  assert(RVLocs.size() == 1 && "More than 1 return value not supported.");
 
   // Copy the result values into the output registers.
-  for (unsigned i = 0, e = RVLocs.size(); i != e; ++i) {
-    CCValAssign &VA = RVLocs[i];
-    SDValue ValToCopy = OutVals[i];
+  CCValAssign &VA = RVLocs[0];
+  SDValue ValToCopy = OutVals[0];
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), ValToCopy, Flag);
-    Flag = Chain.getValue(1);
-    RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
-  }
+  RetOps.push_back(
+      DAG.getCopyToReg(Chain, DL, VA.getLocReg(), ValToCopy, Flag));
+  RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
 
-  RetOps[0] = Chain;  // Update chain.
-
+  // FIXME: Flag?
+#if 0
+  Flag = Chain.getValue(1);
   // Add the flag if we have it.
   if (Flag.getNode())
     RetOps.push_back(Flag);
+#endif
 
   return DAG.getNode(Cpu0ISD::Ret, DL, MVT::Other, RetOps);
 }

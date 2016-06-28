@@ -15,7 +15,8 @@
 
 def CC_Cpu0 : CallingConv<[
   CCIfType<[ i1, i8, i16 ], CCPromoteToType<i32>>,
-  CCIfType<[ i32 ], CCAssignToReg<[ R4, R5 ]>>
+  CCIfType<[ i32 ], CCAssignToReg<[ R4, R5 ]>>,
+  CCIfType<[ i32 ], CCAssignToStack<4, 4>> // 4 bytes size, 4 bytes alignment.
 ]>;
 
 //===----------------------------------------------------------------------===//

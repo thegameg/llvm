@@ -29,6 +29,10 @@ static cl::opt<bool> EnableMachineCombinerPass("x86-machine-combiner",
                                cl::desc("Enable the machine combiner pass"),
                                cl::init(true), cl::Hidden);
 
+static cl::opt<bool> EnableJaguar("jaguar",
+                               cl::desc("Jaguar"),
+                               cl::init(false));
+
 namespace llvm {
 void initializeWinEHStatePassPass(PassRegistry &);
 }
@@ -311,6 +315,11 @@ void X86PassConfig::addPreRegAlloc() {
   }
 
   addPass(createX86WinAllocaExpander());
+
+  // Jaguar-specific pass.
+  const Triple &TT = TM->getTargetTriple();
+  if (TT.getArch() == Triple::x86 && EnableJaguar)
+    addPass(createX86JaguarLowering());
 }
 
 void X86PassConfig::addPostRegAlloc() {

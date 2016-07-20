@@ -25,6 +25,7 @@ set(sources
   X86ISelDAGToDAG.cpp
   X86ISelLowering.cpp
   X86InstrInfo.cpp
+  X86JaguarLowering.cpp
   X86MCInstLower.cpp
   X86MachineFunctionInfo.cpp
   X86OptimizeLEAs.cpp

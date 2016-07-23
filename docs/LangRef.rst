@@ -12537,6 +12537,23 @@ not overflow at link time under the medium code model if ``x`` is an
 a constant initializer folded into a function body. This intrinsic can be
 used to avoid the possibility of overflows when loading from such a constant.
 
+'``llvm.tc_async_call``' Intrinsic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Syntax:
+"""""""
+
+::
+
+      declare i8* @llvm.tc_async_call(i8* (...)* %f, i32 %nb_args, i8** %args) nounwind
+
+Overview:
+"""""""""
+
+This intrinsic helps `jaguar` call a function in a different thread.
+
+LLVM lowers this to a call to ``f``, passing it ``nb_args`` from ``args``.
+
 Stack Map Intrinsics
 --------------------
 

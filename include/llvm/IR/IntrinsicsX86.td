@@ -7428,3 +7428,7 @@ let TargetPrefix = "x86" in {
       : GCCBuiltin<"__builtin_ia32_mwaitx">,
         Intrinsic<[], [ llvm_i32_ty, llvm_i32_ty, llvm_i32_ty ], []>;
 }
+
+def int_tc_async_call : Intrinsic<[llvm_ptr_ty],
+                                  [llvm_anyptr_ty, llvm_i32_ty, llvm_ptrptr_ty],
+                                  [], "llvm.tc_async_call">;

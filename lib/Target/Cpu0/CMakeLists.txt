@@ -7,6 +7,7 @@ tablegen(LLVM Cpu0GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM Cpu0GenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM Cpu0GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM Cpu0GenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM Cpu0GenAsmMatcher.inc -gen-asm-matcher)
 add_public_tablegen_target(Cpu0CommonTableGen)
 
 add_llvm_target(Cpu0CodeGen
@@ -26,3 +27,4 @@ add_llvm_target(Cpu0CodeGen
 add_subdirectory(InstPrinter)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)
+add_subdirectory(AsmParser)

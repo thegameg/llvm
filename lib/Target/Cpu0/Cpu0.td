@@ -36,12 +36,10 @@ include "Cpu0Schedule.td"
 def : ProcessorModel<"cpu0", NoSchedModel, []>;
 
 //===----------------------------------------------------------------------===//
-// AsmWriter and AsmParser.
+// The target.
 //===----------------------------------------------------------------------===//
-
-// FIXME: Add AsmParser.
 
 def Cpu0 : Target {
   let InstructionSet = Cpu0InstrInfo;
-  // FIXME: AsmParser.
+  // AsmParser and AsmWriter are kept default.
 }

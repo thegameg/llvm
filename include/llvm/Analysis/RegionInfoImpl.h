@@ -398,7 +398,7 @@ void RegionBase<Tr>::addSubRegion(RegionT *SubRegion, bool moveChildren) {
 }
 
 template <class Tr>
-typename Tr::RegionT *RegionBase<Tr>::removeSubRegion(RegionT *Child) {
+void RegionBase<Tr>::removeSubRegion(RegionT *Child) {
   assert(Child->parent == this && "Child is not a child of this region!");
   Child->parent = nullptr;
   typename RegionSet::iterator I =
@@ -406,8 +406,7 @@ typename Tr::RegionT *RegionBase<Tr>::removeSubRegion(RegionT *Child) {
         return R.get() == Child;
       });
   assert(I != children.end() && "Region does not exit. Unable to remove.");
-  children.erase(children.begin() + (I - begin()));
-  return Child;
+  children.erase(I);
 }
 
 template <class Tr>

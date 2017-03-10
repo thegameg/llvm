@@ -516,10 +516,9 @@ public:
 
   /// @brief Remove a subregion from this Region.
   ///
-  /// The subregion is not deleted, as it will probably be inserted into another
-  /// region.
-  /// @param SubRegion The SubRegion that will be removed.
-  RegionT *removeSubRegion(RegionT *SubRegion);
+  /// @param SubRegion The SubRegion that will be removed from this region's
+  /// children, and then deleted.
+  void removeSubRegion(RegionT *SubRegion);
 
   /// @brief Move all direct child nodes of this Region to another Region.
   ///

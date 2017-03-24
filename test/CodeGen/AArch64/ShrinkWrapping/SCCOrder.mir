@@ -1,0 +1,54 @@
+# RUN: llc -mtriple=aarch64-- -run-pass=shrink-wrap2 %s -enable-shrink-wrap2=true -o /dev/null -debug-only=shrink-wrap2 2>&1 | FileCheck %s
+# REQUIRES: asserts
+--- |
+  define i32 @fun() local_unnamed_addr #1 align 2 {
+    entry:
+    ret i32 0
+  }
+  attributes #1 = { nounwind ssp "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="cyclone" "target-features"="+crypto,+neon,+zcm,+zcz" "unsafe-fp-math"="false" "use-soft-float"="false" }
+
+...
+---
+name:            fun
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.3
+    liveins:
+
+    HINT 0, implicit-def %lr
+
+    B %bb.3
+
+  bb.2:
+    successors: %bb.3
+
+  bb.3:
+    successors: %bb.4, %bb.12
+
+    HINT 0, implicit-def %nzcv
+    Bcc 10, %bb.12, implicit killed %nzcv
+    B %bb.4
+
+  bb.4:
+    successors: %bb.12, %bb.5
+
+    HINT 0, implicit-def %nzcv
+    Bcc 10, %bb.5, implicit killed %nzcv
+    B %bb.12
+
+  bb.5:
+    successors: %bb.2
+
+    B %bb.2
+
+  bb.12:
+
+    RET_ReallyLR
+
+...
+# CHECK-LABEL: fun
+# CHECK: BB#0 uses : %LR
+# CHECK: **** Shrink-wrapping results
+# CHECK-NEXT: BB#0: Saves: %LR, | Restores:
+# CHECK-NEXT: BB#5: Saves: | Restores: %LR,

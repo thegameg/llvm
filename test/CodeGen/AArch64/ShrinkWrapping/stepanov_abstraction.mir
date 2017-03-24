@@ -1,0 +1,46 @@
+# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -start-before=shrink-wrap2 %s -enable-shrink-wrap2=true -o - 2>&1 | FileCheck %s
+# REQUIRES: asserts
+# XFAIL: *
+--- |
+  define void @_ZN9benchmark9quicksortI14PointerWrapperIdEdEEvT_S3_() nounwind {
+  entry:
+    ret void
+  }
+...
+---
+name:            _ZN9benchmark9quicksortI14PointerWrapperIdEdEEvT_S3_
+tracksRegLiveness: true
+liveins:
+  - { reg: '%x1' }
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.3
+    liveins: %x1
+
+    %x19 = COPY %x1
+    CBNZW %wzr, %bb.3
+    B %bb.1
+
+  bb.1:
+    successors: %bb.2
+    liveins: %x19
+
+
+  bb.2:
+    successors: %bb.2, %bb.3
+    liveins: %x19
+
+    ADJCALLSTACKDOWN 0, implicit-def dead %sp, implicit %sp
+    %x1 = COPY %x19
+    BL @_ZN9benchmark9quicksortI14PointerWrapperIdEdEEvT_S3_, csr_aarch64_aapcs, implicit-def dead %lr, implicit %sp, implicit undef %x0, implicit %x1, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+    dead %xzr = SUBSXri undef %x8, 8, 0, implicit-def %nzcv
+    Bcc 12, %bb.2, implicit killed %nzcv
+    B %bb.3
+
+  bb.3:
+    RET_ReallyLR
+
+...
+# CHECK-LABEL: _ZN9benchmark9quicksortI14PointerWrapperIdEdEEvT_S3_
+# CHECK-NOT: Pushing invalid registers for frame!

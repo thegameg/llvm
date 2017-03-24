@@ -326,6 +326,12 @@ public:
     return true;
   }
 
+  // FIXME: ShrinkWrap2: Yet another target hook to be removed later.
+  virtual void
+  processValidCalleeSavedInfo(MachineFunction &MF,
+                              const TargetRegisterInfo *TRI,
+                              std::vector<CalleeSavedInfo> &CSI) const {}
+
   /// Check if given function is safe for not having callee saved registers.
   /// This is used when interprocedural register allocation is enabled.
   static bool isSafeForNoCSROpt(const Function *F) {

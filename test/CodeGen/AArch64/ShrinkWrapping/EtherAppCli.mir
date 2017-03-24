@@ -1,0 +1,32 @@
+# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -start-before=shrink-wrap2 -stop-after=prologepilog %s -enable-shrink-wrap2=true -o - 2>&1 | FileCheck %s
+# REQUIRES: asserts
+# XFAIL: *
+--- |
+  declare void @_ZN13cSimpleModule12recordScalarEPKcd() nounwind
+  define void @_ZN11EtherAppCli6finishEv() nounwind {
+  entry:
+    ret void
+  }
+...
+---
+name:            _ZN11EtherAppCli6finishEv
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+
+    CBNZW %wzr, %bb.2
+    B %bb.1
+
+  bb.1:
+    successors: %bb.2
+
+    ADJCALLSTACKDOWN 0, implicit-def dead %sp, implicit %sp
+    BL @_ZN13cSimpleModule12recordScalarEPKcd, csr_aarch64_aapcs, implicit-def dead %lr, implicit %sp, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+
+  bb.2:
+    RET_ReallyLR
+...
+# CHECK-LABEL: _ZN11EtherAppCli6finishEv
+# CHECK-NOT: Insufficient CFI instructions to define a frame!

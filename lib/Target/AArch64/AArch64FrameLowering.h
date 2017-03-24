@@ -69,6 +69,13 @@ public:
 
   bool enableStackSlotScavenging(const MachineFunction &MF) const override;
 
+  // FIXME: ShrinkWrap2: We need this to call computeCalleeSaveRegisterParis
+  // before we spill them.
+  void
+  processValidCalleeSavedInfo(MachineFunction &MF,
+                              const TargetRegisterInfo *TRI,
+                              std::vector<CalleeSavedInfo> &CSI) const override;
+
 private:
   bool shouldCombineCSRLocalStackBump(MachineFunction &MF,
                                       unsigned StackBumpBytes) const;

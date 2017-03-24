@@ -1,0 +1,40 @@
+# RUN: llc -disable-fp-elim -mtriple=x86_64-- -start-before=shrink-wrap2 -stop-after=prologepilog %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o - | FileCheck %s
+# REQUIRE: asserts
+# XFAIL: x86
+--- |
+  define void @fun() nounwind {
+  entry:
+    ret void
+  }
+...
+---
+name:            fun
+tracksRegLiveness: true
+stack:
+  - { id: 0, offset: 0, size: 8, alignment: 8 }
+body:             |
+  bb.0:
+    successors: %bb.2, %bb.1
+
+    NOOP implicit-def %eflags
+    JE_1 %bb.2, implicit killed %eflags
+    JMP_1 %bb.1
+
+  bb.1:
+    successors: %bb.3
+
+    %rbx = COPY %rsp
+    %r14 = COPY %rsp
+    JMP_1 %bb.3
+
+  bb.2:
+    RET 0
+
+  bb.3:
+    liveins: %rbx
+
+    %rax = MOV64rm %stack.0, %rbx, _, 0, _
+    RET 0, %rax
+...
+#CHECK-LABEL: fun
+#CHECK: %rsp = frame-setup SUB64ri8 %rsp, 16

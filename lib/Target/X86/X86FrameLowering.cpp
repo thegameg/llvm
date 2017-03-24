@@ -1068,7 +1068,12 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
     if (X86FI->getRestoreBasePointer())
       FrameSize += SlotSize;
 
-    NumBytes = FrameSize - X86FI->getCalleeSavedFrameSize();
+    NumBytes = FrameSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= X86FI->getCalleeSavedFrameSize();
 
     // Callee-saved registers are pushed on stack before the stack is realigned.
     if (TRI->needsStackRealignment(MF) && !IsWin64Prologue)
@@ -1133,7 +1138,12 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
     }
   } else {
     assert(!IsFunclet && "funclets without FPs not yet implemented");
-    NumBytes = StackSize - X86FI->getCalleeSavedFrameSize();
+    NumBytes = StackSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= X86FI->getCalleeSavedFrameSize();
   }
 
   // For EH funclets, only allocate enough space for outgoing calls. Save the
@@ -1145,6 +1155,10 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
   // Skip the callee-saved push instructions.
   bool PushedRegs = false;
   int StackOffset = 2 * stackGrowth;
+
+  // FIXME: Add CFI for all the callee saved registers. Since the saves /
+  // restores are not at the beginning of the function, we need to go through
+  // all the basic blocks.
 
   while (MBBI != MBB.end() &&
          MBBI->getFlag(MachineInstr::FrameSetup) &&
@@ -1577,7 +1591,12 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
   } else if (hasFP(MF)) {
     // Calculate required stack adjustment.
     uint64_t FrameSize = StackSize - SlotSize;
-    NumBytes = FrameSize - CSSize;
+    NumBytes = FrameSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= CSSize;
 
     // Callee-saved registers were pushed on stack before the stack was
     // realigned.
@@ -1589,7 +1608,13 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
             TII.get(Is64Bit ? X86::POP64r : X86::POP32r), MachineFramePtr)
         .setMIFlag(MachineInstr::FrameDestroy);
   } else {
-    NumBytes = StackSize - CSSize;
+    NumBytes = StackSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= CSSize;
+
   }
   uint64_t SEHStackAllocAmt = NumBytes;
 
@@ -1650,6 +1675,12 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
     unsigned SEHFrameOffset = calculateSetFPREG(SEHStackAllocAmt);
     uint64_t LEAAmount =
         IsWin64Prologue ? SEHStackAllocAmt - SEHFrameOffset : -CSSize;
+    // FIXME: ShrinkWrap2: Here, we can't assume we are going to pop all the
+    // callee saves (because we aren't, we actually move them back, then adjust
+    // the stack), so we just want to restore the stack pointer. This should go
+    // away at some point...
+    if (MFI.getShouldUseShrinkWrap2())
+      LEAAmount = 0;
 
     // There are only two legal forms of epilogue:
     // - add SEHAllocationSize, %rsp
@@ -1942,6 +1973,11 @@ bool X86FrameLowering::spillCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     const std::vector<CalleeSavedInfo> &CSI,
     const TargetRegisterInfo *TRI) const {
+  // FIXME: ShrinkWrap2: Save using this function when it's adapted to work
+  // without push / pop.
+  if (MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2())
+    return false;
+
   DebugLoc DL = MBB.findDebugLoc(MI);
 
   // Don't save CSRs in 32-bit EH funclets. The caller saves EBX, EBP, ESI, EDI
@@ -2008,6 +2044,11 @@ bool X86FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
                                                MachineBasicBlock::iterator MI,
                                         const std::vector<CalleeSavedInfo> &CSI,
                                           const TargetRegisterInfo *TRI) const {
+  // FIXME: ShrinkWrap2: Restore using this function when it's adapted to work
+  // without push / pop.
+  if (MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2())
+    return false;
+
   if (CSI.empty())
     return false;
 

@@ -38,6 +38,8 @@
 
 using namespace llvm;
 
+static cl::opt<int> ShrinkWrapPass("shrink-wrap-pass", cl::init(2), cl::Hidden,
+                                   cl::desc("Choose shrink-wrap-pass to use"));
 static cl::opt<bool> DisablePostRASched("disable-post-ra", cl::Hidden,
     cl::desc("Disable Post Regalloc Scheduler"));
 static cl::opt<bool> DisableBranchFold("disable-branch-fold", cl::Hidden,
@@ -621,8 +623,10 @@ void TargetPassConfig::addMachinePasses() {
   addPostRegAlloc();
 
   // Insert prolog/epilog code.  Eliminate abstract frame index references...
-  if (getOptLevel() != CodeGenOpt::None)
+  if (ShrinkWrapPass == 1)
     addPass(&ShrinkWrapID);
+  else
+    addPass(&ShrinkWrap2ID);
 
   // Prolog/Epilog inserter needs a TargetMachine to instantiate. But only
   // do so if it hasn't been disabled, substituted, or overridden.

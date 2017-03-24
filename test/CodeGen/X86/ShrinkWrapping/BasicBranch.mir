@@ -1,0 +1,37 @@
+# RUN: llc -mtriple=x86_64-- -run-pass=prologepilog -debug-only=shrink-wrap2 %s -o /dev/null 2>&1 | FileCheck %s
+# REQUIRE: asserts
+--- |
+  define void @f0() nounwind { ret void }
+...
+---
+name:            f0
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.2, %bb.1
+
+    %eflags = IMPLICIT_DEF
+    JE_1 %bb.2, implicit killed %eflags
+    JMP_1 %bb.1
+
+  bb.1:
+    successors: %bb.3
+
+    %rbx = IMPLICIT_DEF
+    JMP_1 %bb.3
+
+  bb.2:
+    RET 0
+
+  bb.3:
+    %rbx = IMPLICIT_DEF
+    RET 0
+...
+# Basic shrink-wrapping example. Early return with uses of CSRs in the body.
+#CHECK-LABEL: f0
+
+#CHECK: BB#1 uses : %RBX
+#CHECK-NEXT: BB#3 uses : %RBX
+#CHECK: **** Shrink-wrapping results
+#CHECK-NEXT: BB#1: Saves: %RBX, | Restores:
+#CHECK-NEXT: BB#3: Saves: | Restores: %RBX,

@@ -1,0 +1,36 @@
+# RUN: llc -mtriple=x86_64-- -run-pass=prologepilog %s -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
+# REQUIRES: asserts
+--- |
+  define void @f0() nounwind { ret void }
+...
+---
+name:            f0
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+    liveins: %edi
+
+    %eflags = IMPLICIT_DEF
+    JNE_1 %bb.2, implicit killed %eflags
+    JMP_1 %bb.1
+
+  bb.1:
+    RET 0
+
+  bb.2:
+    successors: %bb.3
+
+    %rbx = IMPLICIT_DEF
+
+  bb.3:
+    successors: %bb.3
+
+    JMP_1 %bb.3
+...
+# Check that we don't save on a branch that never returns.
+#CHECK-LABEL: f0
+
+#CHECK: BB#2 uses : %RBX
+#CHECK-NEXT: Remove uses from no-return BB#2
+#CHECK-NOT: Saves:
+#CHECK-NOT: restores:

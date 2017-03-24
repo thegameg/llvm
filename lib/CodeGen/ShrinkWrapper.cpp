@@ -787,6 +787,11 @@ void ShrinkWrapper::dumpResults() const {
 }
 #endif // LLVM_ENABLE_DUMP
 
+ShrinkWrapper::ShrinkWrapper(const MachineFunction &MF)
+    : ShrinkWrapper(
+          MF,
+          MF.getSubtarget().getFrameLowering()->createCSRShrinkWrapInfo(MF)) {}
+
 ShrinkWrapper::ShrinkWrapper(const MachineFunction &MF,
                              std::unique_ptr<ShrinkWrapInfo> SW)
     : MF(MF), Uses(MF.getNumBlockIDs()), SWI(std::move(SW)), SI(MF) {

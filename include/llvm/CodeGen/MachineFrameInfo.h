@@ -15,6 +15,9 @@
 #define LLVM_CODEGEN_MACHINEFRAMEINFO_H
 
 #include "llvm/ADT/SmallVector.h"
+// FIXME: ShrinkWrap2: Temporary hack. Remove.
+#include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/Support/DataTypes.h"
 #include <cassert>
 #include <vector>
@@ -22,7 +25,6 @@
 namespace llvm {
 class raw_ostream;
 class MachineFunction;
-class MachineBasicBlock;
 class BitVector;
 class AllocaInst;
 
@@ -56,6 +58,17 @@ public:
   bool isRestored()                        const { return Restored; }
   void setRestored(bool R)                       { Restored = R; }
 };
+
+/// Map a set of registers to a basic block. This is a replacement for CSInfo
+/// with extra information about the location of the saves / restores pinned
+/// to a basic block. One register may appear more than once in the map, as
+/// long as it is associated to a different basic block. The CSIs may share
+/// frame indexes for different registers, for different basic blocks.
+/// Similar to CSInfo, the frame indexes in the CalleeSavedInfo struct are
+/// valid ony if CSIValid is true.
+// FIXME: ShrinkWrap2: Make this a DenseMap<unsigned, BitVector>
+typedef DenseMap<MachineBasicBlock *, std::vector<CalleeSavedInfo>>
+    CalleeSavedMap;
 
 /// The MachineFrameInfo class represents an abstract stack frame until
 /// prolog/epilog code is inserted.  This class is key to allowing stack frame
@@ -290,12 +303,22 @@ class MachineFrameInfo {
   /// stack objects like arguments so we can't treat them as immutable.
   bool HasTailCall = false;
 
+  // FIXME: ShrinkWrap2: Deprecate.
   /// Not null, if shrink-wrapping found a better place for the prologue.
   MachineBasicBlock *Save = nullptr;
   /// Not null, if shrink-wrapping found a better place for the epilogue.
   MachineBasicBlock *Restore = nullptr;
 
+private:
+  /// Should the PrologEpilogInserter and the various target hooks use the
+  /// information gathered from shrink-wrapping?
+  // FIXME: ShrinkWrap2: Fix name.
+  // FIXME: ShrinkWrap2: Merge shrink-wrapped / non-shrink-wrapped paths.
+  bool ShouldUseShrinkWrap2 = false;
+
 public:
+  // FIXME: ShrinkWrap2: Temporary hack. Remove.
+  RegScavenger *RS;
   explicit MachineFrameInfo(unsigned StackAlignment, bool StackRealignable,
                             bool ForcedRealign)
       : StackAlignment(StackAlignment), StackRealignable(StackRealignable),
@@ -696,10 +719,23 @@ public:
 
   void setCalleeSavedInfoValid(bool v) { CSIValid = v; }
 
+  // FIXME: ShrinkWrap2: Merge with multiple points.
   MachineBasicBlock *getSavePoint() const { return Save; }
   void setSavePoint(MachineBasicBlock *NewSave) { Save = NewSave; }
   MachineBasicBlock *getRestorePoint() const { return Restore; }
   void setRestorePoint(MachineBasicBlock *NewRestore) { Restore = NewRestore; }
+
+  // FIXME: ShrinkWrap2: Is this the right place for this? This should be
+  // somewhere in PEI or TargetFrameLowering, since they are the only ones using
+  // it.
+  // FIXME: ShrinkWrap2: This gets really messy and we should merge all the
+  // behaviour for both shrink-wrapping passes and with it disabled.
+  // FIXME: ShrinkWrap2: Name.
+  // FIXME: ShrinkWrap2: Merge shrink-wrapped / non-shrink-wrapped paths.
+  bool getShouldUseShrinkWrap2() const { return ShouldUseShrinkWrap2; }
+  // FIXME: ShrinkWrap2: Name.
+  // FIXME: ShrinkWrap2: Merge shrink-wrapped / non-shrink-wrapped paths.
+  void setShouldUseShrinkWrap2(bool New) { ShouldUseShrinkWrap2 = New; }
 
   /// Return a set of physical registers that are pristine.
   ///

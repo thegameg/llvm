@@ -50,6 +50,11 @@ using namespace llvm;
 cl::opt<bool> EnableIPRA("enable-ipra", cl::init(false), cl::Hidden,
                          cl::desc("Enable interprocedural register allocation "
                                   "to reduce load/store at procedure calls."));
+// FIXME: ShrinkWrap2: Keep the second one only. Move it from TPC when we
+// decided that ShrinkWrapping is no longer a pass.
+extern cl::opt<cl::boolOrDefault> EnableShrinkWrap2Opt;
+static cl::opt<int> ShrinkWrapPass("shrink-wrap-pass", cl::init(2), cl::Hidden,
+                                   cl::desc("Choose shrink-wrap-pass to use"));
 static cl::opt<bool> DisablePostRASched("disable-post-ra", cl::Hidden,
     cl::desc("Disable Post Regalloc Scheduler"));
 static cl::opt<bool> DisableBranchFold("disable-branch-fold", cl::Hidden,
@@ -830,8 +835,10 @@ void TargetPassConfig::addMachinePasses() {
   addPostRegAlloc();
 
   // Insert prolog/epilog code.  Eliminate abstract frame index references...
-  if (getOptLevel() != CodeGenOpt::None)
+  if (getOptLevel() != CodeGenOpt::None && ShrinkWrapPass == 1) {
     addPass(&ShrinkWrapID);
+    EnableShrinkWrap2Opt = cl::BOU_FALSE;
+  }
 
   // Prolog/Epilog inserter needs a TargetMachine to instantiate. But only
   // do so if it hasn't been disabled, substituted, or overridden.

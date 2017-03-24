@@ -44,6 +44,7 @@ class AArch64FunctionInfo final : public MachineFunctionInfo {
 
   /// HasStackFrame - True if this function has a stack frame. Set by
   /// determineCalleeSaves().
+  // FIXME: ShrinkWrap2: This should not be set in determineCalleeSaves...
   bool HasStackFrame = false;
 
   /// \brief Amount of stack frame size, not including callee-saved registers.

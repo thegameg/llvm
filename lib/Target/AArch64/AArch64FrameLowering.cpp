@@ -44,7 +44,8 @@
 // | prev_fp, prev_lr                  |
 // | (a.k.a. "frame record")           |
 // |-----------------------------------| <- fp(=x29)
-// |                                   |
+// | FIXME: ShrinkWrap2: What about    |
+// |        shrink-wrapping?           |
 // | other callee-saved registers      |
 // |                                   |
 // |-----------------------------------|
@@ -337,6 +338,7 @@ bool AArch64FrameLowering::shouldCombineCSRLocalStackBump(
 // Convert callee-save register save/restore instruction to do stack pointer
 // decrement/increment to allocate/deallocate the callee-save stack area by
 // converting store/load to use pre/post increment version.
+LLVM_ATTRIBUTE_USED // FIXME: ShrinkWrap2: Remove attribute when we reuse this.
 static MachineBasicBlock::iterator convertCalleeSaveRestoreToSPPrePostIncDec(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
     const DebugLoc &DL, const TargetInstrInfo *TII, int CSStackSizeInc) {
@@ -447,6 +449,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     return;
 
   int NumBytes = (int)MFI.getStackSize();
+  // FIXME: ShrinkWrap2: This is set by determineCalleeSaves. Seems wrong to me.
   if (!AFI->hasStackFrame()) {
     assert(!HasFP && "unexpected function without stack frame but with FP");
 
@@ -463,6 +466,12 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
       emitFrameOffset(MBB, MBBI, DL, AArch64::SP, AArch64::SP, -NumBytes, TII,
                       MachineInstr::FrameSetup);
 
+      // FIXME: ShrinkWrap2: Don't emit CFI for callee saves yet.
+      // We could emit CFI for FP, but the AArch64 assembler expects both LR and
+      // FP to be there (AArch64AsmBackend.cpp:417).
+      if (MFI.getShouldUseShrinkWrap2())
+        return;
+
       // Label used to tie together the PROLOG_LABEL and the MachineMoves.
       MCSymbol *FrameLabel = MMI.getContext().createTempSymbol();
       // Encode the stack size of the leaf function.
@@ -475,18 +484,30 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     return;
   }
 
+  // FIXME: ShrinkWrap2: This is set by determineCalleeSaves. Seems wrong to me.
   auto CSStackSize = AFI->getCalleeSavedStackSize();
   // All of the remaining stack allocations are for locals.
   AFI->setLocalStackSize(NumBytes - CSStackSize);
 
-  bool CombineSPBump = shouldCombineCSRLocalStackBump(MF, NumBytes);
+  // FIXME: ShrinkWrap2: There seems to be a bug in storeRegToStackSlot, the
+  // operands contain an FI instead of SP + offset, so an assert his hit in
+  // fixupCalleeSaveRestoreStackOffset. Disable for now.
+  bool CombineSPBump = false && shouldCombineCSRLocalStackBump(MF, NumBytes);
   if (CombineSPBump) {
     emitFrameOffset(MBB, MBBI, DL, AArch64::SP, AArch64::SP, -NumBytes, TII,
                     MachineInstr::FrameSetup);
     NumBytes = 0;
   } else if (CSStackSize != 0) {
+    // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
+    // of CSR.
+    if (MFI.getShouldUseShrinkWrap2()) {
+      emitFrameOffset(MBB, MBBI, DL, AArch64::SP, AArch64::SP, -CSStackSize,
+                      TII, MachineInstr::FrameSetup);
+    }
+    else {
     MBBI = convertCalleeSaveRestoreToSPPrePostIncDec(MBB, MBBI, DL, TII,
                                                      -CSStackSize);
+    }
     NumBytes -= CSStackSize;
   }
   assert(NumBytes >= 0 && "Negative stack allocation size!?");
@@ -502,6 +523,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
   }
   if (HasFP) {
     // Only set up FP if we actually need to. Frame pointer is fp = sp - 16.
+    // FIXME: ShrinkWrap2: 16 = fp + lr?
     int FPOffset = CSStackSize - 16;
     if (CombineSPBump)
       FPOffset += AFI->getLocalStackSize();
@@ -638,6 +660,13 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     //  Ltmp5:
     //     .cfi_offset w28, -32
 
+
+    // FIXME: ShrinkWrap2: Don't emit CFI for callee saves yet.
+    // We could emit CFI for FP, but the AArch64 assembler expects both LR and
+    // FP to be there (AArch64AsmBackend.cpp:417).
+    if (MFI.getShouldUseShrinkWrap2())
+      return;
+
     if (HasFP) {
       // Define the current CFA rule to use the provided FP.
       unsigned Reg = RegInfo->getDwarfRegNum(FramePtr, true);
@@ -654,6 +683,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
           .addCFIIndex(CFIIndex)
           .setMIFlags(MachineInstr::FrameSetup);
     }
+
 
     // Now emit the moves for whatever callee saved regs we have (including FP,
     // LR if those are saved).
@@ -729,11 +759,19 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
   // it as the 2nd argument of AArch64ISD::TC_RETURN.
 
   auto CSStackSize = AFI->getCalleeSavedStackSize();
-  bool CombineSPBump = shouldCombineCSRLocalStackBump(MF, NumBytes);
 
+  // FIXME: ShrinkWrap2: There seems to be a bug in storeRegToStackSlot, the
+  // operands contain an FI instead of SP + offset, so an assert his hit in
+  // fixupCalleeSaveRestoreStackOffset. Disable for now.
+  bool CombineSPBump = false && shouldCombineCSRLocalStackBump(MF, NumBytes);
+
+  // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
+  // of CSR.
+  if (!MFI.getShouldUseShrinkWrap2()) {
   if (!CombineSPBump && CSStackSize != 0)
     convertCalleeSaveRestoreToSPPrePostIncDec(
         MBB, std::prev(MBB.getFirstTerminator()), DL, TII, CSStackSize);
+  }
 
   // Move past the restores of the callee-saved registers.
   MachineBasicBlock::iterator LastPopI = MBB.getFirstTerminator();
@@ -755,6 +793,12 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
     return;
   }
 
+  // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
+  // of CSR.
+  if (MFI.getShouldUseShrinkWrap2()) {
+    emitFrameOffset(MBB, MBB.getFirstTerminator(), DL, AArch64::SP, AArch64::SP,
+                    CSStackSize, TII, MachineInstr::FrameDestroy);
+  }
   NumBytes -= CSStackSize;
   assert(NumBytes >= 0 && "Negative stack allocation size!?");
 
@@ -850,6 +894,22 @@ int AArch64FrameLowering::resolveFrameIndexReference(const MachineFunction &MF,
   assert((isFixed || !RegInfo->needsStackRealignment(MF) || !UseFP) &&
          "In the presence of dynamic stack pointer realignment, "
          "non-argument objects cannot be accessed through the frame pointer");
+
+  // FIXME: Don't use FP to save FP, because we didn't spill FP yet, since
+  // spills come right after stack setup, and FP is part of spills, not like on
+  // X86, where it's excluded and spilled separately.
+  if (!MFI.getSaves().empty()) {
+    if (UseFP) {
+      auto &CSIs = MFI.getCalleeSavedInfo();
+      if (std::find_if(CSIs.begin(), CSIs.end(),
+                       [&](const CalleeSavedInfo &CSI) {
+                         return CSI.getFrameIdx() == FI &&
+                                CSI.getReg() == RegInfo->getFrameRegister(MF);
+                       }) != CSIs.end()) {
+        UseFP = false;
+      }
+    }
+  }
 
   if (UseFP) {
     FrameReg = RegInfo->getFrameRegister(MF);

@@ -2389,8 +2389,9 @@ void AArch64InstrInfo::storeRegToStackSlot(
   assert(Opc && "Unknown register class");
 
   const MachineInstrBuilder MI = BuildMI(MBB, MBBI, DL, get(Opc))
-                                      .addReg(SrcReg, getKillRegState(isKill))
-                                      .addFrameIndex(FI);
+                                     .addReg(SrcReg, getKillRegState(isKill))
+                                     .setMIFlag(MachineInstr::FrameSetup)
+                                     .addFrameIndex(FI);
 
   if (Offset)
     MI.addImm(0);
@@ -2494,6 +2495,7 @@ void AArch64InstrInfo::loadRegFromStackSlot(
 
   const MachineInstrBuilder MI = BuildMI(MBB, MBBI, DL, get(Opc))
                                       .addReg(DestReg, getDefRegState(true))
+                                      .setMIFlag(MachineInstr::FrameDestroy)
                                       .addFrameIndex(FI);
   if (Offset)
     MI.addImm(0);

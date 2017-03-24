@@ -1,0 +1,113 @@
+# RUN: llc -mtriple=x86_64-- -run-pass=prologepilog %s -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
+# REQUIRES: asserts
+--- |
+  define void @f0() nounwind { ret void }
+...
+---
+name:            f0
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+
+    %eflags = IMPLICIT_DEF
+    JNE_1 %bb.2, implicit killed %eflags
+    JMP_1 %bb.1
+
+  bb.1:
+    successors: %bb.15
+
+    JMP_1 %bb.15
+
+  bb.2:
+    successors: %bb.11
+
+    %r15 = IMPLICIT_DEF
+    %r14 = IMPLICIT_DEF
+    %rbx = IMPLICIT_DEF
+    JMP_1 %bb.11
+
+  bb.3:
+    successors: %bb.4, %bb.3
+
+    %eflags = IMPLICIT_DEF
+    JNE_1 %bb.3, implicit killed %eflags
+    JMP_1 %bb.4
+
+  bb.4:
+    successors: %bb.6
+    liveins: %r14
+
+    %r14 = IMPLICIT_DEF
+    JMP_1 %bb.6
+
+  bb.5:
+    successors: %bb.6
+
+    JMP_1 %bb.6
+
+  bb.6:
+    successors: %bb.7
+
+    JMP_1 %bb.7
+
+  bb.7:
+    successors: %bb.8, %bb.9
+
+    %eflags = IMPLICIT_DEF
+    JA_1 %bb.8, implicit killed %eflags
+    JMP_1 %bb.9
+
+  bb.8:
+    successors: %bb.5, %bb.7
+
+    %eflags = IMPLICIT_DEF
+    JE_1 %bb.5, implicit killed %eflags
+    JMP_1 %bb.7
+
+  bb.9:
+    successors: %bb.10, %bb.7
+    liveins: %rbx
+
+    %eflags = IMPLICIT_DEF
+    JE_1 %bb.7, implicit killed %eflags
+    JMP_1 %bb.10
+
+  bb.10:
+    successors: %bb.11
+
+
+  bb.11:
+    successors: %bb.12, %bb.3
+
+    %eflags = IMPLICIT_DEF
+    JE_1 %bb.12, implicit killed %eflags
+    JMP_1 %bb.3
+
+  bb.12:
+    successors: %bb.13, %bb.14
+
+    %eflags = IMPLICIT_DEF
+    JE_1 %bb.14, implicit killed %eflags
+
+  bb.13:
+    successors: %bb.15
+
+    JMP_1 %bb.15
+
+  bb.14:
+    RET 0
+
+  bb.15:
+    RET 0
+...
+# Check that we propagate the loop uses to its predecessors and successors.
+
+#CHECK-LABEL: f0
+
+#CHECK: BB#2 uses : %RBX, %R14, %R15
+#CHECK-NEXT: BB#10 uses : %R14
+#CHECK: **** Shrink-wrapping results
+#CHECK-NEXT: BB#2: Saves: %RBX, %R14, %R15, | Restores: %RBX, %R15
+#CHECK-NEXT: BB#13: Saves: | Restores: %R14
+#CHECK-NEXT: BB#14: Saves: | Restores: %R14

@@ -35,6 +35,92 @@
 
 using namespace llvm;
 
+class X86CSRShrinkWrapInfo final : public ShrinkWrapInfo {
+  /// Number of bits the result needs.
+  unsigned NumCSRs = 0;
+public:
+  unsigned getNumResultBits() const override { return NumCSRs; }
+
+  X86CSRShrinkWrapInfo(const MachineFunction &MF) : ShrinkWrapInfo(MF) {
+    bool Is64Bit = MF.getSubtarget<X86Subtarget>().is64Bit();
+    auto TRI = static_cast<const X86RegisterInfo *>(
+        MF.getSubtarget().getRegisterInfo());
+    const MCPhysReg *CSRegs = TRI->getCalleeSavedRegs(&MF);
+    unsigned BasePtrIndex = static_cast<unsigned>(-1);
+    unsigned RBPIndex = static_cast<unsigned>(-1);
+    // Count the number of CSRs.
+    unsigned BasePtr = TRI->getBaseRegister();
+    if (Is64Bit && BasePtr == X86::EBX)
+      BasePtr = X86::RBX;
+    unsigned FramePtr = TRI->getFramePtr();
+    if (Is64Bit && FramePtr == X86::EBP)
+      FramePtr = X86::RBP;
+    // FIXME: ShrinkWrap2: Fix HHVM, which has only R12 as a CSR.
+    for (unsigned i = 0; CSRegs[i]; ++i) {
+      if (CSRegs[i] == FramePtr)
+        RBPIndex = i;
+      else if (CSRegs[i] == BasePtr)
+        BasePtrIndex = i;
+      ++NumCSRs;
+    }
+
+    determineCSRUses();
+
+    // FIXME: ShrinkWrap2: const_cast
+    MachineFrameInfo &MFI = const_cast<MachineFrameInfo &>(MF.getFrameInfo());
+
+    // FIXME: ShrinkWrap2: This is a copy of the code in determineCalleeSaves.
+    // It also feels like there should not be any side effects done here.
+    // FIXME: ShrinkWrap2: const_cast
+    auto X86FI = const_cast<X86MachineFunctionInfo *>(
+        MF.getInfo<X86MachineFunctionInfo>());
+    int64_t TailCallReturnAddrDelta = X86FI->getTCReturnAddrDelta();
+    auto SlotSize = TRI->getSlotSize();
+
+    if (TailCallReturnAddrDelta < 0) {
+      // create RETURNADDR area
+      //   arg
+      //   arg
+      //   RETADDR
+      //   { ...
+      //     RETADDR area
+      //     ...
+      //   }
+      //   [EBP]
+      MFI.CreateFixedObject(-TailCallReturnAddrDelta,
+                            TailCallReturnAddrDelta - SlotSize, true);
+    }
+
+    // Spill the BasePtr if it's used.
+    if (TRI->hasBasePointer(MF)) {
+      auto &SavedRegs = Uses[MF.front().getNumber()];
+      if (SavedRegs.empty())
+        SavedRegs.resize(getNumResultBits());
+      SavedRegs.set(BasePtrIndex);
+
+      // Allocate a spill slot for EBP if we have a base pointer and EH
+      // funclets.
+      if (MF.hasEHFunclets()) {
+        int FI = MFI.CreateSpillStackObject(SlotSize, SlotSize);
+        X86FI->setHasSEHFramePtrSave(true);
+        X86FI->setSEHFramePtrSaveIndex(FI);
+      }
+    }
+
+    // X86FrameLowering::EmitPrologue spills RBP manually. Remove it from the
+    // uses.
+    for (BitVector &BV : Uses)
+      if (!BV.empty())
+        BV.reset(RBPIndex);
+  }
+
+  raw_ostream &printElt(unsigned Elt, raw_ostream &OS) const override {
+    auto &TRI = *MF.getSubtarget().getRegisterInfo();
+    OS << PrintReg(TRI.getCalleeSavedRegs(&MF)[Elt], &TRI);
+    return OS;
+  }
+};
+
 X86FrameLowering::X86FrameLowering(const X86Subtarget &STI,
                                    unsigned StackAlignOverride)
     : TargetFrameLowering(StackGrowsDown, StackAlignOverride,
@@ -1065,7 +1151,12 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
     if (X86FI->getRestoreBasePointer())
       FrameSize += SlotSize;
 
-    NumBytes = FrameSize - X86FI->getCalleeSavedFrameSize();
+    NumBytes = FrameSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= X86FI->getCalleeSavedFrameSize();
 
     // Callee-saved registers are pushed on stack before the stack is realigned.
     if (TRI->needsStackRealignment(MF) && !IsWin64Prologue)
@@ -1123,7 +1214,12 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
     }
   } else {
     assert(!IsFunclet && "funclets without FPs not yet implemented");
-    NumBytes = StackSize - X86FI->getCalleeSavedFrameSize();
+    NumBytes = StackSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= X86FI->getCalleeSavedFrameSize();
   }
 
   // For EH funclets, only allocate enough space for outgoing calls. Save the
@@ -1135,6 +1231,10 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
   // Skip the callee-saved push instructions.
   bool PushedRegs = false;
   int StackOffset = 2 * stackGrowth;
+
+  // FIXME: Add CFI for all the callee saved registers. Since the saves /
+  // restores are not at the beginning of the function, we need to go through
+  // all the basic blocks.
 
   while (MBBI != MBB.end() &&
          MBBI->getFlag(MachineInstr::FrameSetup) &&
@@ -1570,7 +1670,12 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
   } else if (hasFP(MF)) {
     // Calculate required stack adjustment.
     uint64_t FrameSize = StackSize - SlotSize;
-    NumBytes = FrameSize - CSSize;
+    NumBytes = FrameSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= CSSize;
 
     // Callee-saved registers were pushed on stack before the stack was
     // realigned.
@@ -1582,7 +1687,13 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
             TII.get(Is64Bit ? X86::POP64r : X86::POP32r), MachineFramePtr)
         .setMIFlag(MachineInstr::FrameDestroy);
   } else {
-    NumBytes = StackSize - CSSize;
+    NumBytes = StackSize;
+    // FIXME: ShrinkWrap2: Since we disabled the push / pop spilling, we now
+    // have to include the callee saves in our frame size, so that our sp
+    // displacement can be updated properly.
+    if (!MFI.getShouldUseShrinkWrap2())
+      NumBytes -= CSSize;
+
   }
   uint64_t SEHStackAllocAmt = NumBytes;
 
@@ -1643,6 +1754,12 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
     unsigned SEHFrameOffset = calculateSetFPREG(SEHStackAllocAmt);
     uint64_t LEAAmount =
         IsWin64Prologue ? SEHStackAllocAmt - SEHFrameOffset : -CSSize;
+    // FIXME: ShrinkWrap2: Here, we can't assume we are going to pop all the
+    // callee saves (because we aren't, we actually move them back, then adjust
+    // the stack), so we just want to restore the stack pointer. This should go
+    // away at some point...
+    if (MFI.getShouldUseShrinkWrap2())
+      LEAAmount = 0;
 
     // There are only two legal forms of epilogue:
     // - add SEHAllocationSize, %rsp
@@ -1935,6 +2052,11 @@ bool X86FrameLowering::spillCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     const std::vector<CalleeSavedInfo> &CSI,
     const TargetRegisterInfo *TRI) const {
+  // FIXME: ShrinkWrap2: Save using this function when it's adapted to work
+  // without push / pop.
+  if (MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2())
+    return false;
+
   DebugLoc DL = MBB.findDebugLoc(MI);
 
   // Don't save CSRs in 32-bit EH funclets. The caller saves EBX, EBP, ESI, EDI
@@ -2001,6 +2123,11 @@ bool X86FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
                                                MachineBasicBlock::iterator MI,
                                           std::vector<CalleeSavedInfo> &CSI,
                                           const TargetRegisterInfo *TRI) const {
+  // FIXME: ShrinkWrap2: Restore using this function when it's adapted to work
+  // without push / pop.
+  if (MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2())
+    return false;
+
   if (CSI.empty())
     return false;
 
@@ -3036,4 +3163,9 @@ void X86FrameLowering::processFunctionBeforeFrameFinalized(
   addFrameReference(BuildMI(MBB, MBBI, DL, TII.get(X86::MOV64mi32)),
                     UnwindHelpFI)
       .addImm(-2);
+}
+
+std::unique_ptr<ShrinkWrapInfo>
+X86FrameLowering::createCSRShrinkWrapInfo(const MachineFunction &MF) const {
+  return llvm::make_unique<X86CSRShrinkWrapInfo>(MF);
 }

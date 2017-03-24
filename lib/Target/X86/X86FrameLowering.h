@@ -177,6 +177,9 @@ public:
                               MachineBasicBlock::iterator MBBI,
                               const DebugLoc &DL, bool RestoreSP = false) const;
 
+  std::unique_ptr<ShrinkWrapInfo>
+  createCSRShrinkWrapInfo(const MachineFunction &MF) const override;
+
 private:
   uint64_t calculateMaxStackAlign(const MachineFunction &MF) const;
 

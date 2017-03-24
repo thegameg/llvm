@@ -292,6 +292,8 @@ class ShrinkWrapper {
 public:
   /// Run the shrink-wrapper on the function. If there are no uses, there will
   /// be no saves / restores.
+  /// By default, run the shrink-wrapper with the target's CSRShrinkWrapInfo.
+  ShrinkWrapper(const MachineFunction &MF);
   /// Run the shrink-wrapper with a custom ShrinkWrapInfo.
   ShrinkWrapper(const MachineFunction &MF, std::unique_ptr<ShrinkWrapInfo> SWI);
 

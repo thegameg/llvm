@@ -1068,6 +1068,7 @@ void CodeViewDebug::beginFunctionImpl(const MachineFunction *MF) {
   // non-frame setup location marks the beginning of the function body.
   // FIXME: is there a simpler a way to do this? Can we just search
   // for the first instruction of the function, not the last of the prolog?
+  // FIXME: ShrinkWrap2: This won't work with shrink-wrapping, I guess.
   DebugLoc PrologEndLoc;
   bool EmptyPrologue = true;
   for (const auto &MBB : *MF) {

@@ -1,0 +1,26 @@
+--- !Missed
+Pass:            inline
+Name:            NoDefinition
+Function:        main
+Args:
+ - Callee:          baz
+ - String:          ' will not be inlined into '
+ - Caller:          main
+ - String:          ' because its definition is unavailable'
+...
+--- !Missed
+Pass:            shrink-wrap
+Name:            NewReg
+Function:        main
+...
+--- !Missed
+Pass:            shrink-wrap
+Name:            NewReg
+Function:        main
+...
+--- !Analysis
+Pass:            shrink-wrap
+Name:             cost
+Function:        main
+Statistic:         1000
+...

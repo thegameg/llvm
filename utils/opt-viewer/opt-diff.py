@@ -59,8 +59,10 @@ if __name__ == '__main__':
     all_remarks1, _, _ = optrecord.gather_results(pmap, files1)
     all_remarks2, _, _ = optrecord.gather_results(pmap, files2)
 
-    added = set(all_remarks2.values()) - set(all_remarks1.values())
-    removed = set(all_remarks1.values()) - set(all_remarks2.values())
+    added = set([item for sublist in all_remarks2.values() for item in sublist])
+          - set([item for sublist in all_remarks1.values() for item in sublist])
+    removed = set([item for sublist in all_remarks1.values() for item in sublist])
+            - set([item for sublist in all_remarks2.values() for item in sublist])
 
     for r in added:
         r.Added = True

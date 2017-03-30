@@ -45,6 +45,11 @@ class Remark(yaml.YAMLObject):
             self.Hotness = 0
         if not hasattr(self, 'Args'):
             self.Args = []
+        if not hasattr(self, 'DebugLoc'):
+            self.DebugLoc = dict()
+            self.DebugLoc['File'] = "unknown"
+            self.DebugLoc['Line'] = 0
+            self.DebugLoc['Column'] = 0
 
     @property
     def File(self):
@@ -167,18 +172,18 @@ class Missed(Remark):
 
 def get_remarks(input_file):
     max_hotness = 0
-    all_remarks = dict()
+    all_remarks = defaultdict(list)
     file_remarks = defaultdict(functools.partial(defaultdict, list))
 
     with open(input_file) as f:
         docs = yaml.load_all(f, Loader=Loader)
         for remark in docs:
             remark.initmissing()
-            # Avoid remarks withoug debug location or if they are duplicated
-            if not hasattr(remark, 'DebugLoc') or remark.key in all_remarks:
+            # Avoid remarks without debug location
+            if not hasattr(remark, 'DebugLoc'):
                 continue
-            all_remarks[remark.key] = remark
 
+            all_remarks[remark.key].append(remark)
             file_remarks[remark.File][remark.Line].append(remark)
 
             # If we're reading a back a diff yaml file, max_hotness is already
@@ -205,10 +210,11 @@ def gather_results(pmap, filenames):
                     if remark.key not in all_remarks:
                         merged[filename][line].append(remark)
 
-    all_remarks = dict()
+    all_remarks = defaultdict(list)
     file_remarks = defaultdict(functools.partial(defaultdict, list))
     for _, all_remarks_job, file_remarks_job in remarks:
         merge_file_remarks(file_remarks_job, all_remarks, file_remarks)
-        all_remarks.update(all_remarks_job)
+        for key in all_remarks_job:
+            all_remarks[key] += all_remarks_job[key]
 
     return all_remarks, file_remarks, max_hotness != 0

@@ -38,11 +38,12 @@ if __name__ == '__main__':
 
     bypass = defaultdict(int)
     byname = defaultdict(int)
-    for r in all_remarks.itervalues():
-        bypass[r.Pass] += 1
-        byname[r.Pass + "/" + r.Name] += 1
+    for l in all_remarks.itervalues():
+        for r in l:
+            bypass[r.Pass] += 1
+            byname[r.Pass + "/" + r.Name] += 1
 
-    total = len(all_remarks)
+    total = len([item for sublist in all_remarks.itervalues() for item in sublist])
     print("{:24s} {:10d}\n".format("Total number of remarks", total))
 
     print("Top 10 remarks by pass:")

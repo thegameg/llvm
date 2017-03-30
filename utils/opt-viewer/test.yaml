@@ -1,0 +1,35 @@
+--- !Passed
+Pass:            slp-vectorizer
+Name:            HorizontalReductionVectorized
+Function:        foo
+Hotness:         1000
+Args:
+  - String:          Horizontal reduction SLP vectorized
+  - Cost:            '-4'
+  - String:          ' and with tree size '
+  - TreeSize:        '10'
+...
+
+--- !Passed
+Pass:            slp-vectorizer
+Name:            StoresVectorized
+Function:        foo
+Hotness:         5090653
+Args:
+  - String:          'Stores SLP vectorized with cost '
+  - Cost:            '-1'
+  - String:          ' and with tree size '
+  - TreeSize:        '4'
+...
+
+--- !Missed
+Pass:            slp-vectorizer
+Name:            StoresVectorizedFaile
+Function:        foo
+Hotness:         5090653
+Args:
+  - String:          'Stores SLP vectorized with cost '
+  - Cost:            '-1'
+  - String:          ' and with tree size '
+  - TreeSize:        '4'
+...

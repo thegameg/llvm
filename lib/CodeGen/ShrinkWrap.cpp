@@ -75,6 +75,9 @@
 // To access TargetInstrInfo.
 #include "llvm/Target/TargetSubtargetInfo.h"
 
+#include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
+#include "ShrinkWrapMeasure.h"
+
 #define DEBUG_TYPE "shrink-wrap"
 
 using namespace llvm;
@@ -87,6 +90,12 @@ STATISTIC(NumCandidatesDropped,
 static cl::opt<cl::boolOrDefault>
     EnableShrinkWrapOpt("enable-shrink-wrap", cl::Hidden,
                         cl::desc("enable the shrink-wrapping pass"));
+
+enum UseDefType {
+    None,
+    Reg,
+    Frame
+  };
 
 namespace {
 /// \brief Class to determine where the safe point to insert the
@@ -109,9 +118,34 @@ class ShrinkWrap : public MachineFunctionPass {
   /// The epilogue will be inserted before the first terminator instruction
   /// in this basic block.
   MachineBasicBlock *Restore;
+public:
   /// Hold the information of the basic block frequency.
   /// Use to check the profitability of the new points.
   MachineBlockFrequencyInfo *MBFI;
+  MachineOptimizationRemarkEmitter *ORE;
+  unsigned isSave(const MachineBasicBlock &MBB) {
+    const MachineFrameInfo &MFI = MBB.getParent()->getFrameInfo();
+    auto Save = MFI.getSavePoint();
+    if (!Save) {
+      if (&MBB == &MBB.getParent()->front())
+        return getCurrentCSRs(RS.get()).size();
+      return 0;
+    }
+    return &MBB == Save ? getCurrentCSRs(RS.get()).size() : 0;
+  }
+  unsigned isRestore(const MachineBasicBlock &MBB) {
+    const MachineFrameInfo &MFI = MBB.getParent()->getFrameInfo();
+    auto Restore = MFI.getRestorePoint();
+    if (!Restore) {
+      for (auto& Ret : *MBB.getParent())
+        if (Ret.isReturnBlock() && &MBB == &Ret)
+          return getCurrentCSRs(RS.get()).size();
+      return 0;
+    }
+    return &MBB == Restore ? getCurrentCSRs(RS.get()).size() : 0;
+  }
+
+private:
   /// Hold the loop information. Used to determine if Save and Restore
   /// are in the same loop.
   MachineLoopInfo *MLI;
@@ -129,10 +163,13 @@ class ShrinkWrap : public MachineFunctionPass {
   /// Current MachineFunction.
   MachineFunction *MachineFunc;
 
+  std::unique_ptr<RegScavenger> RS;
+
   /// \brief Check if \p MI uses or defines a callee-saved register or
   /// a frame index. If this is the case, this means \p MI must happen
   /// after Save and before Restore.
-  bool useOrDefCSROrFI(const MachineInstr &MI, RegScavenger *RS) const;
+  std::pair<UseDefType, unsigned> useOrDefCSROrFI(const MachineInstr &MI,
+                                                  RegScavenger *RS) const;
 
   const SetOfRegs &getCurrentCSRs(RegScavenger *RS) const {
     if (CurrentCSRs.empty()) {
@@ -181,7 +218,9 @@ class ShrinkWrap : public MachineFunctionPass {
   bool ArePointsInteresting() const { return Save != Entry && Save && Restore; }
 
   /// \brief Check if shrink wrapping is enabled for this target and function.
-  static bool isShrinkWrapEnabled(const MachineFunction &MF);
+  bool isShrinkWrapEnabled(const MachineFunction &MF);
+
+#include "ShrinkWrapRemarks.h"
 
 public:
   static char ID;
@@ -196,6 +235,7 @@ public:
     AU.addRequired<MachineDominatorTree>();
     AU.addRequired<MachinePostDominatorTree>();
     AU.addRequired<MachineLoopInfo>();
+    AU.addRequired<MachineOptimizationRemarkEmitterPass>();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
 
@@ -216,40 +256,46 @@ INITIALIZE_PASS_DEPENDENCY(MachineBlockFrequencyInfo)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_DEPENDENCY(MachinePostDominatorTree)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
+INITIALIZE_PASS_DEPENDENCY(MachineOptimizationRemarkEmitterPass)
 INITIALIZE_PASS_END(ShrinkWrap, "shrink-wrap", "Shrink Wrap Pass", false, false)
 
-bool ShrinkWrap::useOrDefCSROrFI(const MachineInstr &MI,
-                                 RegScavenger *RS) const {
+std::pair<UseDefType, unsigned>
+ShrinkWrap::useOrDefCSROrFI(const MachineInstr &MI, RegScavenger *RS) const {
   if (MI.getOpcode() == FrameSetupOpcode ||
       MI.getOpcode() == FrameDestroyOpcode) {
     DEBUG(dbgs() << "Frame instruction: " << MI << '\n');
-    return true;
+    return {Frame, 0};
   }
   for (const MachineOperand &MO : MI.operands()) {
-    bool UseOrDefCSR = false;
+    unsigned UseOrDefCSR = 0;
     if (MO.isReg()) {
       unsigned PhysReg = MO.getReg();
       if (!PhysReg)
         continue;
       assert(TargetRegisterInfo::isPhysicalRegister(PhysReg) &&
              "Unallocated register?!");
-      UseOrDefCSR = RCI.getLastCalleeSavedAlias(PhysReg);
+      if (RCI.getLastCalleeSavedAlias(PhysReg))
+        UseOrDefCSR = PhysReg;
     } else if (MO.isRegMask()) {
       // Check if this regmask clobbers any of the CSRs.
       for (unsigned Reg : getCurrentCSRs(RS)) {
         if (MO.clobbersPhysReg(Reg)) {
-          UseOrDefCSR = true;
+          UseOrDefCSR = Reg;
           break;
         }
       }
     }
-    if (UseOrDefCSR || MO.isFI()) {
-      DEBUG(dbgs() << "Use or define CSR(" << UseOrDefCSR << ") or FI("
-                   << MO.isFI() << "): " << MI << '\n');
-      return true;
+    if (UseOrDefCSR) {
+      DEBUG(dbgs() << "Use or define CSR(" << UseOrDefCSR << "): " << MI
+                   << '\n');
+      return {Reg, UseOrDefCSR};
+    }
+    if (MO.isFI()) {
+      DEBUG(dbgs() << "Use FI(" << MO.isFI() << "): " << MI << '\n');
+      return {Frame, 0};
     }
   }
-  return false;
+  return {UseDefType::None, 0};
 }
 
 /// \brief Helper function to find the immediate (post) dominator.
@@ -289,7 +335,7 @@ void ShrinkWrap::updateSaveRestorePoints(MachineBasicBlock &MBB,
   // terminator.
   if (Restore == &MBB) {
     for (const MachineInstr &Terminator : MBB.terminators()) {
-      if (!useOrDefCSROrFI(Terminator, RS))
+      if (useOrDefCSROrFI(Terminator, RS).first == UseDefType::None)
         continue;
       // One of the terminator needs to happen before the restore point.
       if (MBB.succ_empty()) {
@@ -419,12 +465,20 @@ static bool isIrreducibleCFG(const MachineFunction &MF,
 }
 
 bool ShrinkWrap::runOnMachineFunction(MachineFunction &MF) {
-  if (MF.empty() || !isShrinkWrapEnabled(MF))
+  ORE = &getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
+
+  if (skipFunction(*MF.getFunction()) || MF.empty() || !isShrinkWrapEnabled(MF))
     return false;
 
   DEBUG(dbgs() << "**** Analysing " << MF.getName() << '\n');
 
   init(MF);
+
+  Measure<decltype(*this)> Measure{*this, MF};
+
+  const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
+  BitVector Regs{TRI->getNumRegs()};
+  RS.reset(TRI->requiresRegisterScavenging(MF) ? new RegScavenger() : nullptr);
 
   if (isIrreducibleCFG(MF, *MLI)) {
     // If MF is irreducible, a block may be in a loop without
@@ -434,12 +488,13 @@ bool ShrinkWrap::runOnMachineFunction(MachineFunction &MF) {
     // epilogue are not in the same loop, leading to unbalanced
     // construction/deconstruction of the stack frame.
     DEBUG(dbgs() << "Irreducible CFGs are not supported yet\n");
+    MachineOptimizationRemarkMissed R{
+        "shrink-wrap", "IrreducibleCFG", {}, &MF.front()};
+    ORE->emit(R);
     return false;
   }
 
-  const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
-  std::unique_ptr<RegScavenger> RS(
-      TRI->requiresRegisterScavenging(MF) ? new RegScavenger() : nullptr);
+  ShrinkWrapRemarks Remarks{MF, RS.get()};
 
   for (MachineBasicBlock &MBB : MF) {
     DEBUG(dbgs() << "Look into: " << MBB.getNumber() << ' ' << MBB.getName()
@@ -451,11 +506,30 @@ bool ShrinkWrap::runOnMachineFunction(MachineFunction &MF) {
     }
 
     for (const MachineInstr &MI : MBB) {
-      if (!useOrDefCSROrFI(MI, RS.get()))
+      auto UseDef = useOrDefCSROrFI(MI, RS.get());
+      if (UseDef.first == UseDefType::None)
         continue;
+
+      ShrinkWrapState Old{Remarks, Save, Restore, UseDef};
+
       // Save (resp. restore) point must dominate (resp. post dominate)
       // MI. Look for the proper basic block for those.
       updateSaveRestorePoints(MBB, RS.get());
+
+      ShrinkWrapState New{Remarks, Save, Restore, UseDef};
+
+      auto NewReg =
+          UseDef.first != UseDefType::Frame && Remarks.isNewReg(UseDef.second);
+      if (isBetterThan(New, Old)) {
+        const char *Title =
+            UseDef.first == UseDefType::Frame
+                ? "Frame"
+                :  (NewReg ? "NewReg" : "Reg");
+        MachineOptimizationRemarkMissed R{DEBUG_TYPE, Title, MI.getDebugLoc(),
+                                          &MBB};
+        ORE->emit(R);
+      }
+
       // If we are at a point where we cannot improve the placement of
       // save/restore instructions, just give up.
       if (!ArePointsInteresting()) {
@@ -527,24 +601,34 @@ bool ShrinkWrap::runOnMachineFunction(MachineFunction &MF) {
 }
 
 bool ShrinkWrap::isShrinkWrapEnabled(const MachineFunction &MF) {
+  auto BecauseOf = [&](const char *Title, DebugLoc Loc = {}) {
+    MachineOptimizationRemarkMissed R("shrink-wrap", Title, Loc, &MF.front());
+    ORE->emit(R);
+    return false;
+  };
+
   const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
 
   switch (EnableShrinkWrapOpt) {
-  case cl::BOU_UNSET:
-    return TFI->enableShrinkWrapping(MF) &&
-      // Windows with CFI has some limitations that make it impossible
-      // to use shrink-wrapping.
-      !MF.getTarget().getMCAsmInfo()->usesWindowsCFI() &&
-      // Sanitizers look at the value of the stack at the location
-      // of the crash. Since a crash can happen anywhere, the
-      // frame must be lowered before anything else happen for the
-      // sanitizers to be able to get a correct stack frame.
-      !(MF.getFunction()->hasFnAttribute(Attribute::SanitizeAddress) ||
-        MF.getFunction()->hasFnAttribute(Attribute::SanitizeThread) ||
-        MF.getFunction()->hasFnAttribute(Attribute::SanitizeMemory));
-  // If EnableShrinkWrap is set, it takes precedence on whatever the
-  // target sets. The rational is that we assume we want to test
-  // something related to shrink-wrapping.
+  case cl::BOU_UNSET: {
+    if (!TFI->enableShrinkWrapping(MF))
+      return BecauseOf("TargetDisabled");
+    // Windows with CFI has some limitations that make it impossible
+    // to use shrink-wrapping.
+    if (MF.getTarget().getMCAsmInfo()->usesWindowsCFI())
+      return BecauseOf("WindowsCFI");
+
+    // Sanitizers look at the value of the stack at the location
+    // of the crash. Since a crash can happen anywhere, the
+    // frame must be lowered before anything else happen for the
+    // sanitizers to be able to get a correct stack frame.
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeAddress))
+      return BecauseOf("asan");
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeThread))
+      return BecauseOf("tsan");
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeMemory))
+      return BecauseOf("msan");
+  }
   case cl::BOU_TRUE:
     return true;
   case cl::BOU_FALSE:

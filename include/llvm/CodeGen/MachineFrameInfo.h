@@ -689,19 +689,15 @@ public:
   // FIXME: ShrinkWrap2: Provide setSaves / setRestores instead of non-const ref
   // to the map?
   CalleeSavedMap &getSaves() {
-    assert(!Save && !Restore && "Mixing shrink-wrapping results.");
     return Saves;
   }
   CalleeSavedMap &getRestores() {
-    assert(!Save && !Restore && "Mixing shrink-wrapping results.");
     return Restores;
   }
   const CalleeSavedMap &getSaves() const {
-    assert(!Save && !Restore && "Mixing shrink-wrapping results.");
     return Saves;
   }
   const CalleeSavedMap &getRestores() const {
-    assert(!Save && !Restore && "Mixing shrink-wrapping results.");
     return Restores;
   }
   // FIXME: ShrinkWrap2: Name.

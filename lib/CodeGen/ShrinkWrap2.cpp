@@ -43,6 +43,8 @@
 #include "llvm/Target/TargetSubtargetInfo.h"
 
 #include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
+#include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
+#include "ShrinkWrapMeasure.h"
 
 // FIXME: ShrinkWrap2: Fix name.
 #define DEBUG_TYPE "shrink-wrap2"
@@ -92,6 +94,7 @@ class ShrinkWrap2 : public MachineFunctionPass {
   RegSet Regs;
   RegSet TargetAddedRegs;
   RegSet TargetRemovedRegs;
+  RegSet TargetSavedRegs;
 
   /// The dataflow attributes needed to compute shrink-wrapping locations.
   struct DataflowAttributes {
@@ -144,8 +147,10 @@ class ShrinkWrap2 : public MachineFunctionPass {
   /// Detect loops to avoid placing saves / restores in a loop.
   MachineLoopInfo *MLI;
 
+public:
   /// Emit remarks.
   MachineOptimizationRemarkEmitter *ORE;
+private:
 
   /// Does the function satisfy the requirements for shrink-wrapping?
   bool shouldShrinkWrap(const MachineFunction &MF);
@@ -194,7 +199,10 @@ class ShrinkWrap2 : public MachineFunctionPass {
   void dumpResults(MachineFunction &MF) const;
 
   /// \brief Initialize the pass for \p MF.
-  void init(MachineFunction &MF) { MLI = &getAnalysis<MachineLoopInfo>(); }
+  void init(MachineFunction &MF) {
+    MLI = &getAnalysis<MachineLoopInfo>();
+    MBFI = &getAnalysis<MachineBlockFrequencyInfo>();
+  }
 
   /// Clear the function's state.
   void clear() {
@@ -203,12 +211,62 @@ class ShrinkWrap2 : public MachineFunctionPass {
     Regs.clear();
     TargetAddedRegs.clear();
     TargetRemovedRegs.clear();
+    TargetSavedRegs.clear();
 
     Saves.clear();
     Restores.clear();
   }
 
   // FIXME: ShrinkWrap2: releaseMemory?
+
+  // Measurements =============================================================
+public:
+  MachineBlockFrequencyInfo *MBFI;
+  unsigned isSave(const MachineBasicBlock &MBB) {
+    if (!MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2()) {
+      if (&MBB == &MBB.getParent()->front())
+        return TargetSavedRegs.count();
+      return 0;
+    }
+
+    unsigned Extra = 0;
+    if (&MBB == &MBB.getParent()->front()) {
+      auto Bits = TargetAddedRegs;
+      Bits &= TargetRemovedRegs;
+      Extra += Bits.count();
+    }
+    auto Found = Saves.find(MBB.getNumber());
+    if (Found == Saves.end())
+      return Extra;
+    auto Bits = Found->second;
+    Bits &= TargetRemovedRegs;
+    return Extra + Bits.count();
+  }
+
+  unsigned isRestore(const MachineBasicBlock &MBB) {
+    if (!MBB.getParent()->getFrameInfo().getShouldUseShrinkWrap2()) {
+      for (auto &Ret : *MBB.getParent())
+        if (Ret.isReturnBlock() && &MBB == &Ret)
+          return TargetSavedRegs.count();
+      return 0;
+    }
+
+    unsigned Extra = 0;
+    for (auto &Ret : *MBB.getParent()) {
+      if (Ret.isReturnBlock() && &MBB == &Ret) {
+        auto Bits = TargetAddedRegs;
+        Bits &= TargetRemovedRegs;
+        Extra += Bits.count();
+      }
+    }
+
+    auto Found = Restores.find(MBB.getNumber());
+    if (Found == Restores.end())
+      return Extra;
+    auto Bits = Found->second;
+    Bits &= TargetRemovedRegs;
+    return Extra + Bits.count();
+  }
 
 public:
   static char ID;
@@ -219,6 +277,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesAll();
+    AU.addRequired<MachineBlockFrequencyInfo>();
     AU.addRequired<MachineLoopInfo>();
     AU.addRequired<MachineOptimizationRemarkEmitterPass>();
     MachineFunctionPass::getAnalysisUsage(AU);
@@ -238,6 +297,7 @@ char &llvm::ShrinkWrap2ID = ShrinkWrap2::ID;
 // FIXME: ShrinkWrap2: Fix name.
 INITIALIZE_PASS_BEGIN(ShrinkWrap2, "shrink-wrap2", "Shrink Wrap Pass", false,
                       false)
+INITIALIZE_PASS_DEPENDENCY(MachineBlockFrequencyInfo)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_PASS_DEPENDENCY(MachineOptimizationRemarkEmitterPass)
 // FIXME: ShrinkWrap2: Fix name.
@@ -502,12 +562,11 @@ void ShrinkWrap2::determineCalleeSaves(MachineFunction &MF) {
   std::unique_ptr<RegScavenger> RS(
       TRI.requiresRegisterScavenging(MF) ? new RegScavenger() : nullptr);
   // FIXME: ShrinkWrap2: RegScavenger.
-  BitVector SavedRegsTarget;
-  TFI->determineCalleeSaves(MF, SavedRegsTarget, RS.get());
+  TFI->determineCalleeSaves(MF, TargetSavedRegs, RS.get());
   TargetAddedRegs = Regs;
   TargetAddedRegs.flip();
-  TargetAddedRegs &= SavedRegsTarget;
-  TargetRemovedRegs = SavedRegsTarget;
+  TargetAddedRegs &= TargetSavedRegs;
+  TargetRemovedRegs = TargetSavedRegs;
   TargetRemovedRegs.flip();
   TargetRemovedRegs &= Regs;
   TargetRemovedRegs.flip();
@@ -885,6 +944,9 @@ bool ShrinkWrap2::runOnMachineFunction(MachineFunction &MF) {
     return false;
   }
 
+  // Measure from here ->
+  {Measure<decltype(*this)> Measure{*this, MF};
+
   // Don't bother saving if we know we're never going to return.
   removeUsesOnNoReturnPaths(MF);
   DEBUG(dbgs() << "**** After removing uses on no-return paths\n";);
@@ -948,6 +1010,8 @@ bool ShrinkWrap2::runOnMachineFunction(MachineFunction &MF) {
     DEBUG(dbgs() << "No shrink-wrapping results.\n");
   else
     returnToMachineFrame(MF);
+  } // to here, because we still need the attributes.
+
   clear();
 
   return false;

@@ -134,6 +134,19 @@ private:
   }
 
 public:
+  typedef const_bit_set_iterator_impl<SmallBitVector> const_bit_set_iterator;
+  typedef const_bit_set_iterator set_iterator;
+
+  const_bit_set_iterator bit_set_begin() const {
+    return const_bit_set_iterator(*this);
+  }
+  const_bit_set_iterator bit_set_end() const {
+    return const_bit_set_iterator(*this, -1);
+  }
+  iterator_range<const_bit_set_iterator> bit_set() const {
+    return make_range(bit_set_begin(), bit_set_end());
+  }
+
   /// Creates an empty bitvector.
   SmallBitVector() : X(1) {}
 

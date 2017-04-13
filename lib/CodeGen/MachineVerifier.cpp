@@ -758,7 +758,7 @@ MachineVerifier::visitMachineBasicBlockBefore(const MachineBasicBlock *MBB) {
 
   const MachineFrameInfo &MFI = MF->getFrameInfo();
   BitVector PR = MFI.getPristineRegs(*MF);
-  for (int I = PR.find_first(); I>0; I = PR.find_next(I)) {
+  for (int I : PR.bit_set()) {
     for (MCSubRegIterator SubRegs(I, TRI, /*IncludeSelf=*/true);
          SubRegs.isValid(); ++SubRegs)
       regsLive.insert(*SubRegs);

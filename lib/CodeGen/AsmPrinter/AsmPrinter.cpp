@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/PostOrderIterator.h"
 #include "AsmPrinterHandler.h"
 #include "CodeViewDebug.h"
 #include "DwarfDebug.h"
@@ -896,7 +897,7 @@ static bool emitDebugValueComment(const MachineInstr *MI, AsmPrinter &AP) {
   return true;
 }
 
-AsmPrinter::CFIMoveType AsmPrinter::needsCFIMoves() {
+AsmPrinter::CFIMoveType AsmPrinter::needsCFIMoves() const {
   if (MAI->getExceptionHandlingType() == ExceptionHandling::DwarfCFI &&
       MF->getFunction()->needsUnwindTableEntry())
     return CFI_M_EH;
@@ -1411,6 +1412,136 @@ void AsmPrinter::SetupMachineFunction(MachineFunction &MF) {
   EnablePrintSchedInfo = PrintSchedule.getNumOccurrences()
                              ? PrintSchedule
                              : STI.supportPrintSchedInfo();
+
+  ExceptionHandling ExceptionHandlingType = MAI->getExceptionHandlingType();
+  if (ExceptionHandlingType != ExceptionHandling::DwarfCFI &&
+      ExceptionHandlingType != ExceptionHandling::ARM)
+    return;
+
+  if (needsCFIMoves() == CFI_M_None)
+    return;
+  // FIXME: ShrinkWrap2: Compute the blocks that need CFI state switching.
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  if (MFI.getShouldUseShrinkWrap2()) {
+    // Reset everything.
+    Saves.clear();
+    Restores.clear();
+    SaveCFI.clear();
+    SaveCFI.resize(MF.getNumBlockIDs());
+    RestoreCFI.clear();
+    RestoreCFI.resize(MF.getNumBlockIDs());
+
+    SmallVector<BitVector, 8> LiveCSRs{MF.getNumBlockIDs()};
+    const TargetRegisterInfo &TRI = *MF.getSubtarget().getRegisterInfo();
+    for (auto &BV : LiveCSRs)
+      BV.resize(TRI.getNumRegs());
+
+    const MCRegisterInfo *MRI = MF.getMMI().getContext().getRegisterInfo();
+    ReversePostOrderTraversal<MachineFunction *> RPOT(&MF);
+    for (auto &MBB : MF) {
+      for (auto &MI : MBB) {
+        if (!MI.isCFIInstruction())
+          continue;
+        const std::vector<MCCFIInstruction> &Instrs = MF.getFrameInstructions();
+        unsigned CFIIndex = MI.getOperand(0).getCFIIndex();
+        const MCCFIInstruction &CFI = Instrs[CFIIndex];
+        // Check if it's a save.
+        auto &CSIs = MFI.getCalleeSavedInfo();
+        if (CFI.getOperation() == MCCFIInstruction::OpOffset) {
+          unsigned DwarfReg = CFI.getRegister();
+          unsigned Reg = MRI->getLLVMRegNum(DwarfReg, false);
+          auto Found = find_if(CSIs, [&](const CalleeSavedInfo &CSI) {
+            return static_cast<unsigned>(
+                       MRI->getDwarfRegNum(CSI.getReg(), false)) == DwarfReg;
+          });
+          // If the register is not a CSR, ignore it.
+          if (Found == CSIs.end())
+            continue;
+          Saves[&MBB].emplace_back(Reg, Found->getFrameIdx());
+        }
+        // Check if it's a restore.
+        if (CFI.getOperation() == MCCFIInstruction::OpRestore) {
+          unsigned DwarfReg = CFI.getRegister();
+          unsigned Reg = MRI->getLLVMRegNum(DwarfReg, false);
+          auto Found = find_if(CSIs, [&](const CalleeSavedInfo &CSI) {
+            return static_cast<unsigned>(
+                       MRI->getDwarfRegNum(CSI.getReg(), false)) == DwarfReg;
+          });
+          // If the register is not a CSR, ignore it.
+          if (Found == CSIs.end())
+            continue;
+          Restores[&MBB].emplace_back(Reg, Found->getFrameIdx());
+        }
+      }
+    }
+    DEBUG(dbgs() << MF.getName() << " :\n");
+    DEBUG(for (auto &KV
+               : Saves) {
+      dbgs() << "Saves : BB#" << KV.first->getNumber() << "; ";
+      for (auto CSI : KV.second)
+        dbgs() << PrintReg(CSI.getReg(), &TRI) << ", ";
+      dbgs() << '\n';
+    } for (auto &KV
+           : Restores) {
+      dbgs() << "Restores : BB#" << KV.first->getNumber() << "; ";
+      for (auto CSI : KV.second)
+        dbgs() << PrintReg(CSI.getReg(), &TRI) << ", ";
+      dbgs() << '\n';
+    });
+    for (auto *MBB : RPOT) {
+      DEBUG(dbgs() << "RPO: " << MBB->getNumber() << '\n');
+      for (auto *Pred : MBB->predecessors())
+        LiveCSRs[MBB->getNumber()] |= LiveCSRs[Pred->getNumber()];
+      for (auto *Pred : MBB->predecessors())
+        for (auto CS : Restores.lookup(Pred))
+          LiveCSRs[MBB->getNumber()].reset(CS.getReg());
+      for (auto CS : Saves.lookup(MBB))
+        LiveCSRs[MBB->getNumber()].set(CS.getReg());
+    }
+
+    for (auto &BV : SaveCFI)
+      BV.resize(TRI.getNumRegs());
+    for (auto &BV : RestoreCFI)
+      BV.resize(TRI.getNumRegs());
+
+    BitVector LastState{TRI.getNumRegs()};
+    for (auto &MBB : MF) {
+      auto &LiveHere = LiveCSRs[MBB.getNumber()];
+      if (&MBB != &MF.front()) {
+        auto Prev = std::prev(MBB.getIterator());
+        for (auto CS : Restores.lookup(&*Prev))
+          LastState.reset(CS.getReg());
+      }
+
+      // Save everything that is added in the current state and was not there in
+      // the last one.
+      SaveCFI[MBB.getNumber()] = LastState;
+      SaveCFI[MBB.getNumber()].flip();
+      SaveCFI[MBB.getNumber()] &= LiveHere;
+
+      // Restore everything that is not in the current state anymore but it was
+      // in the last one.
+      RestoreCFI[MBB.getNumber()] = LiveHere;
+      RestoreCFI[MBB.getNumber()].flip();
+      RestoreCFI[MBB.getNumber()] &= LastState;
+
+      LastState = LiveHere;
+    }
+
+    DEBUG(for (auto &MBB
+               : MF) {
+      dbgs() << "BB#" << MBB.getNumber() << "\nLive: ";
+      for (auto Reg : LiveCSRs[MBB.getNumber()].bit_set())
+        dbgs() << PrintReg(Reg, &TRI) << ", ";
+      dbgs() << "\nSave: ";
+      for (auto Reg : SaveCFI[MBB.getNumber()].bit_set())
+        dbgs() << PrintReg(Reg, &TRI) << ", ";
+      dbgs() << "\nRestore: ";
+      for (auto Reg : RestoreCFI[MBB.getNumber()].bit_set())
+        dbgs() << PrintReg(Reg, &TRI) << ", ";
+      dbgs() << '\n';
+    });
+  }
 }
 
 namespace {
@@ -2640,6 +2771,41 @@ void AsmPrinter::EmitBasicBlockStart(const MachineBasicBlock &MBB) const {
     }
   } else {
     OutStreamer->EmitLabel(MBB.getSymbol());
+  }
+  // FIXME: ShrinkWrap2: Insert the CFI that are needed to do the transition
+  // between each block.
+  ExceptionHandling ExceptionHandlingType = MAI->getExceptionHandlingType();
+  if (ExceptionHandlingType != ExceptionHandling::DwarfCFI &&
+      ExceptionHandlingType != ExceptionHandling::ARM)
+    return;
+
+  if (needsCFIMoves() == CFI_M_None)
+    return;
+  const MachineFrameInfo &MFI = MF->getFrameInfo();
+  if (MFI.getShouldUseShrinkWrap2()) {
+    const MCRegisterInfo *MRI = MF->getMMI().getContext().getRegisterInfo();
+    const auto &CSIs = MFI.getCalleeSavedInfo();
+    for (auto Reg : SaveCFI[MBB.getNumber()].bit_set()) {
+      // Don't reinsert it if it's already a save.
+      if (Saves.find(&MBB) != Saves.end())
+        continue;
+      auto CSI = *find_if(CSIs, [&](const CalleeSavedInfo &CS) {
+        return MRI->getDwarfRegNum(CS.getReg(), false) == MRI->getDwarfRegNum(Reg, false);
+      });
+      int64_t Offset = MFI.getObjectOffset(CSI.getFrameIdx());
+      unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+      // .cfi_offset %reg, off
+      emitCFIInstruction(
+          MCCFIInstruction::createOffset(nullptr, DwarfReg, Offset));
+    }
+    for (auto Reg : RestoreCFI[MBB.getNumber()].bit_set()) {
+      // Don't reinsert it if it's already a restore.
+      if (Restores.find(&MBB) != Restores.end())
+        continue;
+      unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+      // .cfi_restore %reg
+      emitCFIInstruction(MCCFIInstruction::createRestore(nullptr, DwarfReg));
+    }
   }
 }
 

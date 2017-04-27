@@ -41,6 +41,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
+#include "llvm/CodeGen/MachineInstrBuilder.h"
 #include <climits>
 
 using namespace llvm;
@@ -360,6 +361,21 @@ static void insertCSRSaves(MachineBasicBlock &SaveBB,
       const TargetRegisterClass *RC = TRI.getMinimalPhysRegClass(Reg);
       TII.storeRegToStackSlot(SaveBB, I, Reg, false, CSI.getFrameIdx(), RC,
                               &TRI);
+      std::prev(I)->setFlag(MachineInstr::FrameSetup);
+
+      // FIXME: ShrinkWrap2: Emit CFI for every CSR spill.
+      // .cfi_offset %reg, off
+      auto &MF = *SaveBB.getParent();
+      MachineFrameInfo &MFI = MF.getFrameInfo();
+      if (MFI.getShouldUseShrinkWrap2()) {
+        unsigned Offset = MFI.getObjectOffset(CSI.getFrameIdx());
+        const MCRegisterInfo *MRI = MF.getMMI().getContext().getRegisterInfo();
+        unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+        unsigned CFIIndex = MF.addFrameInst(
+            MCCFIInstruction::createOffset(nullptr, DwarfReg, Offset));
+        BuildMI(SaveBB, I, {}, TII.get(TargetOpcode::CFI_INSTRUCTION))
+            .addCFIIndex(CFIIndex);
+      }
     }
   }
 }
@@ -388,8 +404,24 @@ static void insertCSRRestores(MachineBasicBlock &RestoreBB,
       const TargetRegisterClass *RC = TRI.getMinimalPhysRegClass(Reg);
       TII.loadRegFromStackSlot(RestoreBB, I, Reg, CSIs[i].getFrameIdx(), RC,
                                &TRI);
+      std::prev(I)->setFlag(MachineInstr::FrameDestroy);
+
       assert(I != RestoreBB.begin() &&
              "loadRegFromStackSlot didn't insert any code!");
+
+      // FIXME: ShrinkWrap2: Emit CFI for every CSR restore.
+      // .cfi_restore %reg
+      auto &MF = *RestoreBB.getParent();
+      MachineFrameInfo &MFI = MF.getFrameInfo();
+      if (MFI.getShouldUseShrinkWrap2()) {
+        MachineModuleInfo &MMI = MF.getMMI();
+        const MCRegisterInfo *MRI = MMI.getContext().getRegisterInfo();
+        unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+        unsigned CFIIndex =
+            MF.addFrameInst(MCCFIInstruction::createRestore(nullptr, DwarfReg));
+        BuildMI(RestoreBB, I, {}, TII.get(TargetOpcode::CFI_INSTRUCTION))
+            .addCFIIndex(CFIIndex);
+      }
     }
   }
 }

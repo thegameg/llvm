@@ -22,6 +22,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/CodeGen/DwarfStringPoolEntry.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -148,6 +149,16 @@ private:
   /// A vector of all debug/EH info emitters we should use. This vector
   /// maintains ownership of the emitters.
   SmallVector<HandlerInfo, 1> Handlers;
+
+  // FIXME: ShrinkWrap2: Gather all the saving points (based on CFI).
+  MachineFrameInfo::CalleeSavedMap Saves;
+  // FIXME: ShrinkWrap2: Gather all the restoring points (based on CFI).
+  MachineFrameInfo::CalleeSavedMap Restores;
+
+  // FIXME: ShrinkWrap2: Compute CFI save / restore directives based on the
+  // final layout.
+  SmallVector<BitVector, 8> SaveCFI;
+  SmallVector<BitVector, 8> RestoreCFI;
 
 public:
   struct SrcMgrDiagInfo {
@@ -289,7 +300,7 @@ public:
   void emitFrameAlloc(const MachineInstr &MI);
 
   enum CFIMoveType { CFI_M_None, CFI_M_EH, CFI_M_Debug };
-  CFIMoveType needsCFIMoves();
+  CFIMoveType needsCFIMoves() const;
 
   /// Returns false if needsCFIMoves() == CFI_M_EH for any function
   /// in the module.

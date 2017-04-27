@@ -464,12 +464,6 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
       emitFrameOffset(MBB, MBBI, DL, AArch64::SP, AArch64::SP, -NumBytes, TII,
                       MachineInstr::FrameSetup);
 
-      // FIXME: ShrinkWrap2: Don't emit CFI for callee saves yet.
-      // We could emit CFI for FP, but the AArch64 assembler expects both LR and
-      // FP to be there (AArch64AsmBackend.cpp:417).
-      if (MFI.getShouldUseShrinkWrap2())
-        return;
-
       // Label used to tie together the PROLOG_LABEL and the MachineMoves.
       MCSymbol *FrameLabel = MMI.getContext().createTempSymbol();
       // Encode the stack size of the leaf function.
@@ -671,12 +665,6 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
     //     .cfi_offset w28, -32
 
 
-    // FIXME: ShrinkWrap2: Don't emit CFI for callee saves yet.
-    // We could emit CFI for FP, but the AArch64 assembler expects both LR and
-    // FP to be there (AArch64AsmBackend.cpp:417).
-    if (MFI.getShouldUseShrinkWrap2())
-      return;
-
     if (HasFP) {
       // Define the current CFA rule to use the provided FP.
       unsigned Reg = RegInfo->getDwarfRegNum(FramePtr, true);
@@ -694,7 +682,8 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
           .setMIFlags(MachineInstr::FrameSetup);
     }
 
-
+    if (MFI.getShouldUseShrinkWrap2())
+      return;
     // Now emit the moves for whatever callee saved regs we have (including FP,
     // LR if those are saved).
     emitCalleeSavedFrameMoves(MBB, MBBI);
@@ -934,6 +923,10 @@ static unsigned getPrologueDeath(MachineFunction &MF, unsigned Reg) {
 }
 
 static bool produceCompactUnwindFrame(MachineFunction &MF) {
+  // FIXME: ShrinkWrap2: Fix compact unwinding.
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  if (MFI.getShouldUseShrinkWrap2())
+    return false;
   const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
   AttributeList Attrs = MF.getFunction()->getAttributes();
   return Subtarget.isTargetMachO() &&
@@ -1057,11 +1050,15 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
     const TargetRegisterInfo *TRI) const {
   MachineFunction &MF = *MBB.getParent();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  MachineModuleInfo &MMI = MF.getMMI();
   AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
   DebugLoc DL;
   SmallVectorImpl<RegPairInfo> &RegPairs = AFI->getRegPairs();
-
+  const TargetSubtargetInfo &STI = MF.getSubtarget();
+  const MCRegisterInfo *MRI = STI.getRegisterInfo();
+  bool needsCFI =
+      MMI.hasDebugInfo() || MF.getFunction()->needsUnwindTableEntry();
   // FIXME: ShrinkWrap2: We should always use AFI->getRegPairs(), or at least
   // avoid calling computeCalleeSaveRegisterPair more than once.
   if (!MFI.getShouldUseShrinkWrap2()) {
@@ -1161,7 +1158,17 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
     MIB.addMemOperand(MF.getMachineMemOperand(
         MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx),
         MachineMemOperand::MOStore, 8, 8));
+  if (MFI.getShouldUseShrinkWrap2() && needsCFI) {
+    int64_t Offset = ((-(CSStackSize - 16 - int(RPI.Offset) * 8) / 8) - 2) * 8;
+    unsigned DwarfReg = MRI->getDwarfRegNum(Reg1, true);
+    unsigned CFIIndex = MF.addFrameInst(
+        MCCFIInstruction::createOffset(nullptr, DwarfReg, Offset));
+    BuildMI(MBB, MI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
+        .addCFIIndex(CFIIndex)
+        .setMIFlag(MachineInstr::FrameSetup);
   }
+  }
+
   return true;
 }
 
@@ -1175,6 +1182,11 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
   DebugLoc DL;
   SmallVectorImpl<RegPairInfo> &RegPairs = AFI->getRegPairs();
+  const TargetSubtargetInfo &STI = MF.getSubtarget();
+  const MCRegisterInfo *MRI = STI.getRegisterInfo();
+  MachineModuleInfo &MMI = MF.getMMI();
+  bool needsCFI =
+      MMI.hasDebugInfo() || MF.getFunction()->needsUnwindTableEntry();
 
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
@@ -1268,6 +1280,15 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
     MIB.addMemOperand(MF.getMachineMemOperand(
         MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx),
         MachineMemOperand::MOLoad, 8, 8));
+
+    if (MFI.getShouldUseShrinkWrap2() && needsCFI) {
+      unsigned DwarfReg = MRI->getDwarfRegNum(Reg1, true);
+      unsigned CFIIndex =
+          MF.addFrameInst(MCCFIInstruction::createRestore(nullptr, DwarfReg));
+      BuildMI(MBB, MI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
+          .addCFIIndex(CFIIndex)
+          .setMIFlag(MachineInstr::FrameDestroy);
+  }
   }
   return true;
 }

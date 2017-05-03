@@ -49,8 +49,8 @@ public:
   unsigned StackPtr;
 
   /// Emit target stack probe code. This is required for all
-  /// large stack allocations on Windows. The caller is required to materialize
-  /// the number of bytes to probe in RAX/EAX.
+  /// large stack allocations on Windows. The caller is required to
+  /// materialize the number of bytes to probe in RAX/EAX.
   void emitStackProbe(MachineFunction &MF, MachineBasicBlock &MBB,
                       MachineBasicBlock::iterator MBBI, const DebugLoc &DL,
                       bool InProlog) const;
@@ -87,10 +87,11 @@ public:
                                  const std::vector<CalleeSavedInfo> &CSI,
                                  const TargetRegisterInfo *TRI) const override;
 
-  bool restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
-                                  MachineBasicBlock::iterator MI,
-                                  const std::vector<CalleeSavedInfo> &CSI,
-                                  const TargetRegisterInfo *TRI) const override;
+  bool
+  restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
+                              MachineBasicBlock::iterator MI,
+                              const std::vector<CalleeSavedInfo> &CSI,
+                              const TargetRegisterInfo *TRI) const override;
 
   bool hasFP(const MachineFunction &MF) const override;
   bool hasReservedCallFrame(const MachineFunction &MF) const override;
@@ -100,8 +101,8 @@ public:
   int getFrameIndexReference(const MachineFunction &MF, int FI,
                              unsigned &FrameReg) const override;
 
-  int getFrameIndexReferenceSP(const MachineFunction &MF,
-                               int FI, unsigned &SPReg, int Adjustment) const;
+  int getFrameIndexReferenceSP(const MachineFunction &MF, int FI,
+                               unsigned &SPReg, int Adjustment) const;
   int getFrameIndexReferencePreferSP(const MachineFunction &MF, int FI,
                                      unsigned &FrameReg,
                                      bool IgnoreSPUpdates) const override;
@@ -154,16 +155,16 @@ public:
   /// We want to place the local stack objects in some sort of sensible order.
   /// The heuristic we use is to try and pack them according to static number
   /// of uses and size in order to minimize code size.
-  void orderFrameObjects(const MachineFunction &MF,
-                         SmallVectorImpl<int> &ObjectsToAllocate) const override;
+  void
+  orderFrameObjects(const MachineFunction &MF,
+                    SmallVectorImpl<int> &ObjectsToAllocate) const override;
 
   /// convertArgMovsToPushes - This method tries to convert a call sequence
   /// that uses sub and mov instructions to put the argument onto the stack
   /// into a series of pushes.
   /// Returns true if the transformation succeeded, false if not.
-  bool convertArgMovsToPushes(MachineFunction &MF, 
-                              MachineBasicBlock &MBB,
-                              MachineBasicBlock::iterator I, 
+  bool convertArgMovsToPushes(MachineFunction &MF, MachineBasicBlock &MBB,
+                              MachineBasicBlock::iterator I,
                               uint64_t Amount) const;
 
   /// Wraps up getting a CFI index and building a MachineInstr for it.
@@ -171,7 +172,8 @@ public:
                 const DebugLoc &DL, const MCCFIInstruction &CFIInst) const;
 
   /// Sets up EBP and optionally ESI based on the incoming EBP value.  Only
-  /// needed for 32-bit. Used in funclet prologues and at catchret destinations.
+  /// needed for 32-bit. Used in funclet prologues and at catchret
+  /// destinations.
   MachineBasicBlock::iterator
   restoreWin32EHStackPointers(MachineBasicBlock &MBB,
                               MachineBasicBlock::iterator MBBI,
@@ -214,6 +216,9 @@ private:
   unsigned getPSPSlotOffsetFromSP(const MachineFunction &MF) const;
 
   unsigned getWinEHFuncletFrameSize(const MachineFunction &MF) const;
+
+  std::unique_ptr<ShrinkWrapInfo>
+  createShrinkWrapInfo(const MachineFunction &MF) const override;
 };
 
 } // End llvm namespace

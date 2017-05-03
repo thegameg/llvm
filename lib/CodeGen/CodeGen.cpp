@@ -81,8 +81,6 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeRenameIndependentSubregsPass(Registry);
   initializeSafeStackPass(Registry);
   initializeShrinkWrapPass(Registry);
-  // FIXME: ShrinkWrap2: Merge.
-  initializeShrinkWrap2Pass(Registry);
   initializeSlotIndexesPass(Registry);
   initializeStackColoringPass(Registry);
   initializeStackMapLivenessPass(Registry);

@@ -151,9 +151,9 @@ private:
   SmallVector<HandlerInfo, 1> Handlers;
 
   // FIXME: ShrinkWrap2: Gather all the saving points (based on CFI).
-  MachineFrameInfo::CalleeSavedMap Saves;
+  CalleeSavedMap Saves;
   // FIXME: ShrinkWrap2: Gather all the restoring points (based on CFI).
-  MachineFrameInfo::CalleeSavedMap Restores;
+  CalleeSavedMap Restores;
 
   // FIXME: ShrinkWrap2: Compute CFI save / restore directives based on the
   // final layout.

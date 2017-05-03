@@ -79,6 +79,9 @@ public:
 private:
   bool shouldCombineCSRLocalStackBump(MachineFunction &MF,
                                       unsigned StackBumpBytes) const;
+
+  std::unique_ptr<ShrinkWrapInfo>
+  createShrinkWrapInfo(const MachineFunction &MF) const override;
 };
 
 } // End llvm namespace

@@ -25,6 +25,85 @@
 #include <cstdlib>
 using namespace llvm;
 
+ShrinkWrapInfo::ShrinkWrapInfo(const MachineFunction &MF) : MF(MF) {
+  const TargetRegisterInfo &TRI = *MF.getSubtarget().getRegisterInfo();
+  const MachineRegisterInfo &MRI = MF.getRegInfo();
+
+  // Walk all the uses of each callee-saved register, and map them to their
+  // basic blocks.
+  const MCPhysReg *CSRegs = MRI.getCalleeSavedRegs();
+
+  // FIXME: ShrinkWrap2: Naked functions.
+  // FIXME: ShrinkWrap2: __builtin_unwind_init.
+
+  // Test all the target's callee saved registers.
+  for (unsigned i = 0; CSRegs[i]; ++i) {
+    unsigned Reg = CSRegs[i];
+
+    // Check for regmasks.
+    for (const MachineBasicBlock &MBB : MF) {
+      for (const MachineInstr &MI : MBB) {
+        for (const MachineOperand &MO : MI.operands()) {
+          if (MO.isRegMask() && MO.clobbersPhysReg(Reg)) {
+            RegSet &Used = Uses[MBB.getNumber()];
+            if (Used.empty())
+              Used.resize(TRI.getNumRegs());
+            Used.set(Reg);
+          }
+        }
+      }
+    }
+
+    // If at least one of the aliases is used, mark the original register as
+    // used.
+    for (MCRegAliasIterator AliasReg(Reg, &TRI, true); AliasReg.isValid();
+         ++AliasReg) {
+      // Walk all the uses, excepting for debug instructions.
+      for (auto MOI = MRI.reg_nodbg_begin(*AliasReg), e = MRI.reg_nodbg_end();
+           MOI != e; ++MOI) {
+        // Get or create the registers used for the BB.
+        RegSet &Used = Uses[MOI->getParent()->getParent()->getNumber()];
+        // Resize if it's the first time used.
+        if (Used.empty())
+          Used.resize(TRI.getNumRegs());
+        Used.set(Reg);
+        // If it's a terminator, mark the successors as used as well, since
+        // we can't save after a terminator (i.e. cbz w23, #10).
+        if (MOI->getParent()->isTerminator()) {
+          for (MachineBasicBlock *Succ :
+               MOI->getParent()->getParent()->successors()) {
+            RegSet &Used = Uses[Succ->getNumber()];
+            if (Used.empty())
+              Used.resize(TRI.getNumRegs());
+            Used.set(Reg);
+          }
+        }
+      }
+      // Look for any live-ins in basic blocks.
+      for (const MachineBasicBlock &MBB : MF) {
+        if (MBB.isLiveIn(*AliasReg)) {
+          RegSet &Used = Uses[MBB.getNumber()];
+          // Resize if it's the first time used.
+          if (Used.empty())
+            Used.resize(TRI.getNumRegs());
+          Used.set(Reg);
+        }
+      }
+    }
+  }
+}
+
+unsigned ShrinkWrapInfo::getNumResultBits() const {
+  return MF.getSubtarget().getRegisterInfo()->getNumRegs();
+};
+
+const BitVector *ShrinkWrapInfo::getUses(unsigned MBBNum) const {
+  auto Found = Uses.find(MBBNum);
+  if (Found == Uses.end())
+    return nullptr;
+  return &Found->second;
+}
+
 TargetFrameLowering::~TargetFrameLowering() {
 }
 

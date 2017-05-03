@@ -1,6 +1,5 @@
-# RUN: llc -disable-fp-elim -mtriple=x86_64-- -start-before=shrink-wrap2 -stop-after=prologepilog %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o - | FileCheck %s
+# RUN: llc -disable-fp-elim -mtriple=x86_64-- -run-pass=stack-protector -run-pass=prologepilog %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o - | FileCheck %s
 # REQUIRE: asserts
-# XFAIL: x86
 --- |
   define void @fun() nounwind {
   entry:

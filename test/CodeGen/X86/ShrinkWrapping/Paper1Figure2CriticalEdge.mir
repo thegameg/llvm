@@ -1,4 +1,4 @@
-# RUN: llc -mtriple=i386-apple-darwin10 -run-pass=shrink-wrap2 %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
+# RUN: llc -mtriple=i386-apple-darwin10 -run-pass=stack-protector -run-pass=prologepilog %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
 # REQUIRES: asserts
 --- |
   define void @foo() nounwind {

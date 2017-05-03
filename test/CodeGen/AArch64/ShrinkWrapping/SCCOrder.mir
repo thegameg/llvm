@@ -1,4 +1,4 @@
-# RUN: llc -mtriple=aarch64-- -run-pass=shrink-wrap2 %s -enable-shrink-wrap2=true -o /dev/null -debug-only=shrink-wrap2 2>&1 | FileCheck %s
+# RUN: llc -mtriple=aarch64-- -run-pass=stack-protector -run-pass=prologepilog %s -enable-shrink-wrap2=true -o /dev/null -debug-only=shrink-wrap2 2>&1 | FileCheck %s
 # REQUIRES: asserts
 --- |
   define i32 @fun() local_unnamed_addr #1 align 2 {

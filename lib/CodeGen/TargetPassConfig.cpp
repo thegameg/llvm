@@ -625,8 +625,6 @@ void TargetPassConfig::addMachinePasses() {
   // Insert prolog/epilog code.  Eliminate abstract frame index references...
   if (ShrinkWrapPass == 1)
     addPass(&ShrinkWrapID);
-  else
-    addPass(&ShrinkWrap2ID);
 
   // Prolog/Epilog inserter needs a TargetMachine to instantiate. But only
   // do so if it hasn't been disabled, substituted, or overridden.

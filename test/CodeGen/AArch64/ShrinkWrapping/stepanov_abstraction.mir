@@ -1,6 +1,5 @@
-# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -start-before=shrink-wrap2 %s -enable-shrink-wrap2=true -o - 2>&1 | FileCheck %s
+# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -run-pass=stack-protector -run-pass=prologepilog %s -enable-shrink-wrap2=true -o - 2>&1 | FileCheck %s
 # REQUIRES: asserts
-# XFAIL: *
 --- |
   define void @_ZN9benchmark9quicksortI14PointerWrapperIdEdEEvT_S3_() nounwind {
   entry:

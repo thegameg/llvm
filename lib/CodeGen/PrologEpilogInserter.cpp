@@ -25,10 +25,12 @@
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
 #include "llvm/CodeGen/StackProtector.h"
+#include "llvm/CodeGen/ShrinkWrapper.h"
 #include "llvm/CodeGen/WinEHFuncInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/InlineAsm.h"
@@ -42,11 +44,17 @@
 #include "llvm/Target/TargetRegisterInfo.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include <climits>
 
 using namespace llvm;
 
 #define DEBUG_TYPE "pei"
+
+// FIXME: ShrinkWrap2: Fix name.
+static cl::opt<cl::boolOrDefault>
+    EnableShrinkWrap2Opt("enable-shrink-wrap2", cl::Hidden,
+                         cl::desc("enable the shrink-wrapping 2 pass"));
 
 typedef SmallVector<MachineBasicBlock *, 4> MBBVector;
 static void doSpillCalleeSavedRegs(MachineFunction &MF, RegScavenger *RS,
@@ -77,6 +85,9 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
+
+  /// \brief Check if shrink wrapping is enabled for this target and function.
+  static bool isShrinkWrapEnabled(const MachineFunction &MF);
 
   MachineFunctionProperties getRequiredProperties() const override {
     MachineFunctionProperties MFP;
@@ -123,6 +134,8 @@ private:
   // FrameIndexVirtualScavenging is used.
   bool FrameIndexEliminationScavenging;
 
+  MachineOptimizationRemarkEmitter *ORE;
+
   void calculateCallFrameInfo(MachineFunction &Fn);
   void calculateSaveRestoreBlocks(MachineFunction &Fn);
 
@@ -147,6 +160,7 @@ INITIALIZE_TM_PASS_BEGIN(PEI, "prologepilog", "Prologue/Epilogue Insertion",
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_DEPENDENCY(StackProtector)
+INITIALIZE_PASS_DEPENDENCY(MachineOptimizationRemarkEmitterPass)
 INITIALIZE_TM_PASS_END(PEI, "prologepilog",
                        "Prologue/Epilogue Insertion & Frame Finalization",
                        false, false)
@@ -165,9 +179,46 @@ void PEI::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<MachineLoopInfo>();
   AU.addPreserved<MachineDominatorTree>();
   AU.addRequired<StackProtector>();
+  AU.addRequired<MachineOptimizationRemarkEmitterPass>();
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
+bool PEI::isShrinkWrapEnabled(const MachineFunction &MF) {
+  auto BecauseOf = [&](const char *Title, DebugLoc Loc = {}) {
+    //MachineOptimizationRemarkMissed R("shrink-wrap", Title, Loc, &MF.front());
+    //ORE->emit(R);
+    return false;
+  };
+
+  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+
+  switch (EnableShrinkWrap2Opt) {
+  case cl::BOU_UNSET: {
+    if (!TFI->enableShrinkWrapping(MF))
+      return BecauseOf("TargetDisabled");
+    // Windows with CFI has some limitations that make it impossible
+    // to use shrink-wrapping.
+    if (MF.getTarget().getMCAsmInfo()->usesWindowsCFI())
+      return BecauseOf("WindowsCFI");
+
+    // Sanitizers look at the value of the stack at the location
+    // of the crash. Since a crash can happen anywhere, the
+    // frame must be lowered before anything else happen for the
+    // sanitizers to be able to get a correct stack frame.
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeAddress))
+      return BecauseOf("asan");
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeThread))
+      return BecauseOf("tsan");
+    if (MF.getFunction()->hasFnAttribute(Attribute::SanitizeMemory))
+      return BecauseOf("msan");
+  }
+  case cl::BOU_TRUE:
+    return true;
+  case cl::BOU_FALSE:
+    return false;
+  }
+  llvm_unreachable("Invalid shrink-wrapping state");
+}
 
 /// StackObjSet - A set of stack object indexes
 typedef SmallSetVector<int, 8> StackObjSet;
@@ -184,6 +235,7 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   FrameIndexVirtualScavenging = TRI->requiresFrameIndexScavenging(Fn);
   FrameIndexEliminationScavenging = (RS && !FrameIndexVirtualScavenging) ||
     TRI->requiresFrameIndexReplacementScavenging(Fn);
+  ORE = &getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
 
   // Calculate the MaxCallFrameSize and AdjustsStack variables for the
   // function's frame information. Also eliminates call frame pseudo
@@ -241,12 +293,8 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   RestoreBlocks.clear();
   if (!MFI.getShouldUseShrinkWrap2())
     MFI.setSavePoint(nullptr);
-  else
-    MFI.getSaves().clear();
   if (!MFI.getShouldUseShrinkWrap2())
     MFI.setRestorePoint(nullptr);
-  else
-    MFI.getRestores().clear();
   return true;
 }
 
@@ -592,16 +640,13 @@ static void insertCSRSpillsAndRestores(MachineFunction &Fn,
 }
 
 // FIXME: ShrinkWrap2: Name.
-static void doSpillCalleeSavedRegsShrinkWrap2(MachineFunction &Fn,
-                                              RegScavenger *RS,
-                                              unsigned &MinCSFrameIndex,
-                                              unsigned &MaxCSFrameIndex,
-                                              const MBBVector &SaveBlocks,
-                                              const MBBVector &RestoreBlocks) {
+static void doSpillCalleeSavedRegsShrinkWrap2(
+    MachineFunction &Fn, RegScavenger *RS, unsigned &MinCSFrameIndex,
+    unsigned &MaxCSFrameIndex, const MBBVector &SaveBlocks,
+    const MBBVector &RestoreBlocks, CalleeSavedMap &Saves,
+    CalleeSavedMap &Restores) {
   const TargetFrameLowering *TFI = Fn.getSubtarget().getFrameLowering();
   MachineFrameInfo &MFI = Fn.getFrameInfo();
-  MachineFrameInfo::CalleeSavedMap &Saves = MFI.getSaves();
-  MachineFrameInfo::CalleeSavedMap &Restores = MFI.getRestores();
 
   BitVector SavedRegs;
   // FIXME: ShrinkWrap2: Also have to call TFI->determineCalleeSaves, since it
@@ -720,10 +765,60 @@ static void doSpillCalleeSavedRegs(MachineFunction &Fn, RegScavenger *RS,
   MinCSFrameIndex = std::numeric_limits<unsigned>::max();
   MaxCSFrameIndex = 0;
 
+
+  Optional<ShrinkWrapper> SW;
+
+  /// If any, contains better save points for the prologue found by
+  /// shrink-wrapping.
+  CalleeSavedMap Saves;
+  /// If any, contains better restore points for the epilogue found by
+  /// shrink-wrapping.
+  CalleeSavedMap Restores;
+
+  if (!Fn.empty() && PEI::isShrinkWrapEnabled(Fn)) {
+    SW.emplace(Fn);
+    if (!SW->hasUses())
+      SW.reset();
+    else {
+      auto &SWSaves = SW->getSaves();
+      auto &SWRestores = SW->getRestores();
+      // FIXME: ShrinkWrap2: Should merge the behaviour in PEI?
+      // If there is only one save block, and it's the first one, don't forward
+      // anything to the MachineFrameInfo.
+      // We also could have no saves, since on no-return paths, we can remove
+      // saves.
+      if (SWSaves.size() == 1 &&
+          SWSaves.begin()->first ==
+              static_cast<unsigned>(Fn.front().getNumber()) &&
+          SWSaves.begin()->second == SW->Elts) {
+        SW.reset();
+        DEBUG(dbgs() << "No shrink-wrapping results.\n");
+      } else {
+        typedef DenseMap<unsigned, BitVector> SparseBBRegSetMap;
+        MachineFrameInfo &FnI = Fn.getFrameInfo();
+        auto Transform = [&](const SparseBBRegSetMap &Src,
+                             CalleeSavedMap &Dst) {
+          for (auto &KV : Src) {
+            MachineBasicBlock *MBB = Fn.getBlockNumbered(KV.first);
+            const BitVector &Regs = KV.second;
+            std::vector<CalleeSavedInfo> &CSI = Dst[MBB];
+
+            for (unsigned Reg : Regs.bit_set())
+              CSI.emplace_back(Reg);
+          }
+        };
+        FnI.setShouldUseShrinkWrap2(true);
+        Transform(SWSaves, Saves);
+        Transform(SWRestores, Restores);
+      }
+    }
+  }
+
   // FIXME: ShrinkWrap2: Share code somehow.
   if (MFI.getShouldUseShrinkWrap2())
-    return doSpillCalleeSavedRegsShrinkWrap2(
-        Fn, RS, MinCSFrameIndex, MaxCSFrameIndex, SaveBlocks, RestoreBlocks);
+    return doSpillCalleeSavedRegsShrinkWrap2(Fn, RS, MinCSFrameIndex,
+                                             MaxCSFrameIndex, SaveBlocks,
+                                             RestoreBlocks, Saves, Restores);
 
   // Determine which of the registers in the callee save list should be saved.
   BitVector SavedRegs;

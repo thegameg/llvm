@@ -137,6 +137,141 @@ static cl::opt<bool> EnableRedZone("aarch64-redzone",
 
 STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 
+static bool produceCompactUnwindFrame(const MachineFunction &MF);
+
+class AArch64ShrinkWrapInfo final : public ShrinkWrapInfo {
+public:
+  AArch64ShrinkWrapInfo(const MachineFunction &MF) : ShrinkWrapInfo(MF) {
+    // All calls are tail calls in GHC calling conv, and functions have no
+    // prologue/epilogue.
+    if (MF.getFunction()->getCallingConv() == CallingConv::GHC) {
+      // FIXME: ShrinkWrap2: Don't even compute them
+      Uses.clear();
+      return;
+    }
+
+    const AArch64RegisterInfo *RegInfo =
+        static_cast<const AArch64RegisterInfo *>(
+            MF.getSubtarget().getRegisterInfo());
+    auto AFI =
+        const_cast<AArch64FunctionInfo*>(MF.getInfo<AArch64FunctionInfo>());
+    unsigned UnspilledCSGPR = AArch64::NoRegister;
+    unsigned UnspilledCSGPRPaired = AArch64::NoRegister;
+    auto &SavedRegs = Uses[MF.front().getNumber()];
+    if (SavedRegs.empty())
+      SavedRegs.resize(RegInfo->getNumRegs());
+
+    const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+    // The frame record needs to be created by saving the appropriate registers
+    if (TFI->hasFP(MF)) {
+      SavedRegs.set(AArch64::FP);
+      // FIXME: ShrinkWrap2: Should we let LR be shrink-wrapped?  SavedRegs.set(AArch64::LR);
+    }
+
+    unsigned BasePointerReg = AArch64::NoRegister;
+    if (RegInfo->hasBasePointer(MF))
+      BasePointerReg = RegInfo->getBaseRegister();
+
+    unsigned ExtraCSSpill = 0;
+    const MCPhysReg *CSRegs = RegInfo->getCalleeSavedRegs(&MF);
+    // Figure out which callee-saved registers to save/restore.
+    for (unsigned i = 0; CSRegs[i]; ++i) {
+      const unsigned Reg = CSRegs[i];
+
+      // Add the base pointer register to SavedRegs if it is callee-save.
+      if (Reg == BasePointerReg)
+        SavedRegs.set(Reg);
+
+      bool RegUsed = SavedRegs.test(Reg);
+      unsigned PairedReg = CSRegs[i ^ 1];
+      if (!RegUsed) {
+        if (AArch64::GPR64RegClass.contains(Reg) &&
+            !RegInfo->isReservedReg(MF, Reg)) {
+          UnspilledCSGPR = Reg;
+          UnspilledCSGPRPaired = PairedReg;
+        }
+        continue;
+      }
+
+      // MachO's compact unwind format relies on all registers being stored in
+      // pairs.
+      // FIXME: the usual format is actually better if unwinding isn't needed.
+      if (produceCompactUnwindFrame(MF) && !SavedRegs.test(PairedReg)) {
+        SavedRegs.set(PairedReg);
+        if (AArch64::GPR64RegClass.contains(PairedReg) &&
+            !RegInfo->isReservedReg(MF, PairedReg))
+          ExtraCSSpill = PairedReg;
+      }
+    }
+
+    DEBUG(dbgs() << "*** determineCalleeSaves\nUsed CSRs:";
+          for (int Reg
+               : SavedRegs.bit_set()) dbgs()
+          << ' ' << PrintReg(Reg, RegInfo);
+          dbgs() << "\n";);
+
+    // If any callee-saved registers are used, the frame cannot be eliminated.
+    unsigned NumRegsSpilled = SavedRegs.count();
+    bool CanEliminateFrame = NumRegsSpilled == 0;
+
+    // FIXME: Set BigStack if any stack slot references may be out of range.
+    // For now, just conservatively guestimate based on unscaled indexing
+    // range. We'll end up allocating an unnecessary spill slot a lot, but
+    // realistically that's not a big deal at this stage of the game.
+    // The CSR spill slots have not been allocated yet, so estimateStackSize
+    // won't include them.
+    MachineFrameInfo &MFI = const_cast<MachineFrameInfo&>(MF.getFrameInfo());
+    unsigned CFSize = MFI.estimateStackSize(MF) + 8 * NumRegsSpilled;
+    DEBUG(dbgs() << "Estimated stack frame size: " << CFSize << " bytes.\n");
+    bool BigStack = (CFSize >= 256);
+    if (BigStack || !CanEliminateFrame || RegInfo->cannotEliminateFrame(MF))
+      AFI->setHasStackFrame(true);
+
+    // Estimate if we might need to scavenge a register at some point in order
+    // to materialize a stack offset. If so, either spill one additional
+    // callee-saved register or reserve a special spill slot to facilitate
+    // register scavenging. If we already spilled an extra callee-saved register
+    // above to keep the number of spills even, we don't need to do anything
+    // else here.
+    if (BigStack) {
+      if (!ExtraCSSpill && UnspilledCSGPR != AArch64::NoRegister) {
+        DEBUG(dbgs() << "Spilling " << PrintReg(UnspilledCSGPR, RegInfo)
+                     << " to get a scratch register.\n");
+        SavedRegs.set(UnspilledCSGPR);
+        // MachO's compact unwind format relies on all registers being stored in
+        // pairs, so if we need to spill one extra for BigStack, then we need to
+        // store the pair.
+        if (produceCompactUnwindFrame(MF))
+          SavedRegs.set(UnspilledCSGPRPaired);
+        ExtraCSSpill = UnspilledCSGPRPaired;
+        NumRegsSpilled = SavedRegs.count();
+      }
+
+      // If we didn't find an extra callee-saved register to spill, create
+      // an emergency spill slot.
+      if (!ExtraCSSpill || MF.getRegInfo().isPhysRegUsed(ExtraCSSpill)) {
+        const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
+        const TargetRegisterClass &RC = AArch64::GPR64RegClass;
+        unsigned Size = TRI->getSpillSize(RC);
+        unsigned Align = TRI->getSpillAlignment(RC);
+        int FI = MFI.CreateStackObject(Size, Align, false);
+        //RS->addScavengingFrameIndex(FI);
+        DEBUG(dbgs() << "No available CS registers, allocated fi#" << FI
+                     << " as the emergency spill slot.\n");
+      }
+    }
+
+    // Round up to register pair alignment to avoid additional SP adjustment
+    // instructions.
+    AFI->setCalleeSavedStackSize(alignTo(8 * NumRegsSpilled, 16));
+  }
+
+  raw_ostream &printElt(unsigned Elt, raw_ostream &OS) const override {
+    OS << PrintReg(Elt, MF.getSubtarget().getRegisterInfo());
+    return OS;
+  }
+};
+
 bool AArch64FrameLowering::canUseRedZone(const MachineFunction &MF) const {
   if (!EnableRedZone)
     return false;
@@ -922,9 +1057,9 @@ static unsigned getPrologueDeath(MachineFunction &MF, unsigned Reg) {
   return getKillRegState(!IsLiveIn);
 }
 
-static bool produceCompactUnwindFrame(MachineFunction &MF) {
+static bool produceCompactUnwindFrame(const MachineFunction &MF) {
   // FIXME: ShrinkWrap2: Fix compact unwinding.
-  MachineFrameInfo &MFI = MF.getFrameInfo();
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
   if (MFI.getShouldUseShrinkWrap2())
     return false;
   const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
@@ -1415,4 +1550,9 @@ bool AArch64FrameLowering::enableStackSlotScavenging(
     const MachineFunction &MF) const {
   const AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
   return AFI->hasCalleeSaveStackFreeSpace();
+}
+
+std::unique_ptr<ShrinkWrapInfo>
+AArch64FrameLowering::createShrinkWrapInfo(const MachineFunction &MF) const {
+  return llvm::make_unique<AArch64ShrinkWrapInfo>(MF);
 }

@@ -328,8 +328,6 @@ void initializeScopedNoAliasAAWrapperPassPass(PassRegistry&);
 void initializeSeparateConstOffsetFromGEPPass(PassRegistry&);
 void initializeShadowStackGCLoweringPass(PassRegistry&);
 void initializeShrinkWrapPass(PassRegistry&);
-// FIXME: ShrinkWrap2: Merge.
-void initializeShrinkWrap2Pass(PassRegistry&);
 void initializeSimpleInlinerPass(PassRegistry&);
 void initializeSimpleLoopUnswitchLegacyPassPass(PassRegistry&);
 void initializeSingleLoopExtractorPass(PassRegistry&);

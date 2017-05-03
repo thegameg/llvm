@@ -125,7 +125,7 @@ add_llvm_library(LLVMCodeGen
   ShadowStackGCLowering.cpp
   ShrinkWrap.cpp
 # FIXME: ShrinkWrap2: Merge.
-  ShrinkWrap2.cpp
+  ShrinkWrapper.cpp
   SjLjEHPrepare.cpp
   SlotIndexes.cpp
   SpillPlacement.cpp

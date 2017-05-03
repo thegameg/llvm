@@ -1,6 +1,5 @@
-# RUN: llc -mtriple=aarch64-- -start-before shrink-wrap2 %s -o - | FileCheck %s
+# RUN: llc -mtriple=aarch64-- -run-pass stack-protector -run-pass prologepilog %s -o - | FileCheck %s
 # REQUIRE: asserts
-# XFAIL: *
 --- |
   declare void @_ZdlPv() nounwind
   define void @_ZN11xercesc_2_5L20reinitImplementationEv() nounwind {

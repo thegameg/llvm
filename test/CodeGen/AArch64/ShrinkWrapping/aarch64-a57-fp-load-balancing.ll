@@ -8,9 +8,12 @@
 
 ; CHECK-NOT: unexpected function without stack frame but with FP
 
+; CHECK: BB#0 uses : %FP
 ; CHECK: BB#1 uses : %LR
 ; CHECK: **** Shrink-wrapping results
+; CHECK-NEXT: BB#0: Saves: %FP, | Restores:
 ; CHECK-NEXT: BB#1: Saves: %LR, | Restores: %LR,
+; CHECK-NEXT: BB#2: Saves: | Restores: %FP,
 target datalayout = "e-m:e-i64:64-i128:128-n32:64-S128"
 target triple = "aarch64"
 

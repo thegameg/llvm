@@ -1,4 +1,4 @@
-# RUN: llc -march=x86 -run-pass=shrink-wrap2 %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
+# RUN: llc -march=x86 -run-pass=stack-protector -run-pass=prologepilog %s -enable-shrink-wrap2=true -debug-only=shrink-wrap2 -o /dev/null 2>&1 | FileCheck %s
 # REQUIRES: asserts
 # This is a reduced test case from test/CodeGen/X86/2007-08-09-IllegalX86-64Asm.ll
 --- |

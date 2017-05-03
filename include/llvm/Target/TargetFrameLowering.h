@@ -24,6 +24,36 @@ namespace llvm {
   class MachineFunction;
   class RegScavenger;
 
+/// Information about the target's requirements on shrink-wrapping.
+/// This should describe what does "used" mean in the terms of target's
+/// demands, and it should be the main interface to work with the target.
+class ShrinkWrapInfo {
+  typedef BitVector RegSet;
+
+protected:
+  /// Track all the uses per basic block.
+  DenseMap<unsigned, RegSet> Uses;
+
+  /// The machine function we're shrink-wrapping.
+  const MachineFunction &MF;
+
+public:
+  ShrinkWrapInfo(const MachineFunction &MF);
+  /// Get the number of results we want per block. i.e. number of registers in
+  /// the target.
+  virtual unsigned getNumResultBits() const;
+
+  /// Get the elements that are used for a particular basic block.
+  virtual const BitVector *getUses(unsigned MBBNum) const;
+  /// Provide a way to print elements. Debug only.
+  // FIXME: ShrinkWrap2: Add DUMP macros.
+  virtual raw_ostream &printElt(unsigned Elt, raw_ostream &OS) const {
+    OS << Elt;
+    return OS;
+  };
+  virtual ~ShrinkWrapInfo() = default;
+};
+
 /// Information about stack frame layout on the target.  It holds the direction
 /// of stack growth, the known stack alignment on entry to each function, and
 /// the offset to the locals area.
@@ -344,6 +374,12 @@ public:
         if (CS.isTailCall())
           return false;
     return true;
+  }
+
+  /// Provide all the target-hooks needed for shrink-wrapping.
+  virtual std::unique_ptr<ShrinkWrapInfo>
+  createShrinkWrapInfo(const MachineFunction &MF) const {
+    return nullptr;
   }
 };
 

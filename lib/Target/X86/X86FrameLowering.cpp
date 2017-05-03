@@ -35,6 +35,55 @@
 
 using namespace llvm;
 
+class X86ShrinkWrapInfo final : public ShrinkWrapInfo {
+public:
+  X86ShrinkWrapInfo(const MachineFunction &MF) : ShrinkWrapInfo(MF) {
+    MachineFrameInfo &MFI = const_cast<MachineFrameInfo&>(MF.getFrameInfo());
+
+    auto X86FI = const_cast<X86MachineFunctionInfo *>(
+        MF.getInfo<X86MachineFunctionInfo>());
+    auto TRI = static_cast<const X86RegisterInfo *>(
+        MF.getSubtarget().getRegisterInfo());
+    int64_t TailCallReturnAddrDelta = X86FI->getTCReturnAddrDelta();
+    auto SlotSize = TRI->getSlotSize();
+
+    if (TailCallReturnAddrDelta < 0) {
+      // create RETURNADDR area
+      //   arg
+      //   arg
+      //   RETADDR
+      //   { ...
+      //     RETADDR area
+      //     ...
+      //   }
+      //   [EBP]
+      MFI.CreateFixedObject(-TailCallReturnAddrDelta,
+                            TailCallReturnAddrDelta - SlotSize, true);
+    }
+
+    auto& SavedRegs = Uses[MF.front().getNumber()];
+    // Spill the BasePtr if it's used.
+    if (TRI->hasBasePointer(MF)) {
+      if (SavedRegs.empty())
+        SavedRegs.resize(TRI->getNumRegs());
+      SavedRegs.set(TRI->getBaseRegister());
+
+      // Allocate a spill slot for EBP if we have a base pointer and EH
+      // funclets.
+      if (MF.hasEHFunclets()) {
+        int FI = MFI.CreateSpillStackObject(SlotSize, SlotSize);
+        X86FI->setHasSEHFramePtrSave(true);
+        X86FI->setSEHFramePtrSaveIndex(FI);
+      }
+    }
+  }
+
+  raw_ostream &printElt(unsigned Elt, raw_ostream &OS) const override {
+    OS << PrintReg(Elt, MF.getSubtarget().getRegisterInfo());
+    return OS;
+  }
+};
+
 X86FrameLowering::X86FrameLowering(const X86Subtarget &STI,
                                    unsigned StackAlignOverride)
     : TargetFrameLowering(StackGrowsDown, StackAlignOverride,
@@ -3080,4 +3129,9 @@ void X86FrameLowering::processFunctionBeforeFrameFinalized(
   addFrameReference(BuildMI(MBB, MBBI, DL, TII.get(X86::MOV64mi32)),
                     UnwindHelpFI)
       .addImm(-2);
+}
+
+std::unique_ptr<ShrinkWrapInfo>
+X86FrameLowering::createShrinkWrapInfo(const MachineFunction &MF) const {
+  return llvm::make_unique<X86ShrinkWrapInfo>(MF);
 }

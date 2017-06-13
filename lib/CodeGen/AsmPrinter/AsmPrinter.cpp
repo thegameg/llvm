@@ -20,6 +20,7 @@
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallString.h"
@@ -902,7 +903,12 @@ static bool emitDebugValueComment(const MachineInstr *MI, AsmPrinter &AP) {
 }
 
 AsmPrinter::CFIMoveType AsmPrinter::needsCFIMoves() const {
-  if (MAI->getExceptionHandlingType() == ExceptionHandling::DwarfCFI &&
+  ExceptionHandling ExceptionHandlingType = MAI->getExceptionHandlingType();
+  if (ExceptionHandlingType != ExceptionHandling::DwarfCFI &&
+      ExceptionHandlingType != ExceptionHandling::ARM)
+    return CFI_M_None;
+
+  if (ExceptionHandlingType == ExceptionHandling::DwarfCFI &&
       MF->getFunction()->needsUnwindTableEntry())
     return CFI_M_EH;
 
@@ -912,16 +918,135 @@ AsmPrinter::CFIMoveType AsmPrinter::needsCFIMoves() const {
   return CFI_M_None;
 }
 
+void AsmPrinter::generateShrinkWrappingCFI() {
+  // Reset everything.
+  ExtraSaveCFI.clear();
+  ExtraRestoreCFI.clear();
+
+  // FIXME: ShrinkWrap2: Gather all the saving points (based on CFI).
+  CSRMap Saves;
+  // FIXME: ShrinkWrap2: Gather all the restoring points (based on CFI).
+  CSRMap Restores;
+
+  const MCRegisterInfo *MCRI = MF->getMMI().getContext().getRegisterInfo();
+  const MachineRegisterInfo &MRI = MF->getRegInfo();
+
+  // Collect all the CSRs and their index.
+  const MCPhysReg *CSRegs = MRI.getCalleeSavedRegs();
+  for (unsigned i = 0; CSRegs[i]; ++i) {
+    unsigned DwarfReg = MCRI->getDwarfRegNum(CSRegs[i], true);
+    unsigned Reg = MCRI->getLLVMRegNum(DwarfReg, false);
+    RegToCSRIdx[Reg] = i;
+  }
+
+  // First pass, collect .cfi_offset and .cfi_restore directives:
+  // * .cfi_offset represents a csr save
+  // * .cfi_restore represents a csr restore
+  for (const MachineBasicBlock &MBB : *MF) {
+    for (const MachineInstr &MI : MBB) {
+      if (!MI.isCFIInstruction())
+        continue;
+      const std::vector<MCCFIInstruction> &Instrs = MF->getFrameInstructions();
+      unsigned CFIIndex = MI.getOperand(0).getCFIIndex();
+      const MCCFIInstruction &CFI = Instrs[CFIIndex];
+
+      // Check if it's a save.
+      if (CFI.getOperation() == MCCFIInstruction::OpOffset) {
+        unsigned DwarfReg = CFI.getRegister();
+        unsigned Reg = MCRI->getLLVMRegNum(DwarfReg, false);
+        if (RegToCSRIdx.count(Reg)) {
+          BitVector &Save = Saves[MBB.getNumber()];
+          Save.resize(RegToCSRIdx.size());
+          Save.set(RegToCSRIdx[Reg]);
+        }
+      }
+
+      // Check if it's a restore.
+      if (CFI.getOperation() == MCCFIInstruction::OpRestore) {
+        unsigned DwarfReg = CFI.getRegister();
+        unsigned Reg = MCRI->getLLVMRegNum(DwarfReg, false);
+        if (RegToCSRIdx.count(Reg)) {
+          BitVector &Restore = Restores[MBB.getNumber()];
+          Restore.resize(RegToCSRIdx.size());
+          Restore.set(RegToCSRIdx[Reg]);
+        }
+      }
+    }
+  }
+
+  // Compute the "liveness" of the CSRs. A CSR is live if it has been saved,
+  // and killed if it has been restored.
+  SmallVector<BitVector, 8> LiveCSRs{MF->getNumBlockIDs()};
+  for (BitVector &BV : LiveCSRs)
+    BV.resize(RegToCSRIdx.size());
+
+  ReversePostOrderTraversal<const MachineFunction *> RPOT(MF);
+  for (const MachineBasicBlock *MBB : RPOT) {
+    BitVector &LiveHere = LiveCSRs[MBB->getNumber()];
+    // LIVE(MBB) += LIVE(EACH_PRED) - RESTORE(EACH_PRED) + SAVE(MBB)
+    // Propagate the liveness information.
+    for (const MachineBasicBlock *Pred : MBB->predecessors())
+      LiveHere |= LiveCSRs[Pred->getNumber()];
+    // If any of the predecessors restored any CSR, kill them.
+    for (const MachineBasicBlock *Pred : MBB->predecessors()) {
+      auto Found = Restores.find(Pred->getNumber());
+      if (Found == Restores.end())
+        continue;
+      BitVector &Killed = Found->second;
+      LiveHere.flip();
+      LiveHere |= Killed;
+      LiveHere.flip();
+    }
+    // If this block saved any CSRs, make them live.
+    auto Found = Saves.find(MBB->getNumber());
+    if (Found == Saves.end())
+      continue;
+    BitVector &Saved = Found->second;
+    LiveHere |= Saved;
+  }
+
+  // Now compute the state changes we need in between the blocks.
+  BitVector LastState(RegToCSRIdx.size());
+  for (const MachineBasicBlock &MBB : *MF) {
+    BitVector &LiveHere = LiveCSRs[MBB.getNumber()];
+    if (&MBB != &MF->front()) {
+      auto Prev = std::prev(MBB.getIterator());
+      auto Found = Restores.find(Prev->getNumber());
+      if (Found != Restores.end() && !Found->second.empty()) {
+        BitVector &Killed = Found->second;
+        LastState.flip();
+        LastState |= Killed;
+        LastState.flip();
+      }
+    }
+
+    // Save everything that is added in the current state and was not there in
+    // the last one (and the saves that are already here).
+    BitVector ToSave = LastState;
+    ToSave |= Saves[MBB.getNumber()];
+    ToSave.flip();
+    ToSave &= LiveHere;
+    if (ToSave.count())
+      ExtraSaveCFI[MBB.getNumber()] = std::move(ToSave);
+
+    // Restore everything that is not in the current state anymore but it was
+    // in the last one.
+    BitVector ToRestore = LastState;
+    ToRestore.flip();
+    ToRestore |= LiveHere;
+    ToRestore.flip();
+    if (ToRestore.count())
+      ExtraRestoreCFI[MBB.getNumber()] = std::move(ToRestore);
+
+    LastState = LiveHere;
+  }
+}
+
 bool AsmPrinter::needsSEHMoves() {
   return MAI->usesWindowsCFI() && MF->getFunction()->needsUnwindTableEntry();
 }
 
 void AsmPrinter::emitCFIInstruction(const MachineInstr &MI) {
-  ExceptionHandling ExceptionHandlingType = MAI->getExceptionHandlingType();
-  if (ExceptionHandlingType != ExceptionHandling::DwarfCFI &&
-      ExceptionHandlingType != ExceptionHandling::ARM)
-    return;
-
   if (needsCFIMoves() == CFI_M_None)
     return;
 
@@ -1427,6 +1552,12 @@ void AsmPrinter::SetupMachineFunction(MachineFunction &MF) {
   EnablePrintSchedInfo = PrintSchedule.getNumOccurrences()
                              ? PrintSchedule
                              : STI.supportPrintSchedInfo();
+
+  if (needsCFIMoves() == CFI_M_None)
+    return;
+
+  // FIXME: ShrinkWrap2: Compute the blocks that need CFI state switching.
+  generateShrinkWrappingCFI();
 }
 
 namespace {
@@ -2656,6 +2787,40 @@ void AsmPrinter::EmitBasicBlockStart(const MachineBasicBlock &MBB) const {
     }
   } else {
     OutStreamer->EmitLabel(MBB.getSymbol());
+  }
+
+  // FIXME: ShrinkWrap2: Insert the CFI that are needed to do the transition
+  // between each block.
+  if (needsCFIMoves() == CFI_M_None)
+    return;
+
+  DenseMap<unsigned, unsigned> CSRIdxToCSIIdx;
+  const MCRegisterInfo *MCRI = MF->getMMI().getContext().getRegisterInfo();
+  const MachineFrameInfo &MFI = MF->getFrameInfo();
+  const std::vector<CalleeSavedInfo> &CSIs = MFI.getCalleeSavedInfo();
+  for (auto &KV : enumerate(CSIs)) {
+    const CalleeSavedInfo &CSI = KV.value();
+    unsigned Reg = CSI.getReg();
+    unsigned DwarfReg = MCRI->getDwarfRegNum(Reg, true);
+    Reg = MCRI->getLLVMRegNum(DwarfReg, false);
+    unsigned CSIIdx = KV.index();
+    CSRIdxToCSIIdx[RegToCSRIdx.lookup(Reg)] = CSIIdx;
+  }
+
+  const MCRegisterInfo *MRI = MF->getMMI().getContext().getRegisterInfo();
+  for (unsigned CSRIdx : ExtraSaveCFI.lookup(MBB.getNumber()).set_bits()) {
+    const CalleeSavedInfo &CSI = CSIs[CSRIdxToCSIIdx[CSRIdx]];
+    int64_t Offset = MFI.getObjectOffset(CSI.getFrameIdx());
+    unsigned DwarfReg = MRI->getDwarfRegNum(CSI.getReg(), true);
+    // .cfi_offset %reg, off
+    emitCFIInstruction(
+        MCCFIInstruction::createOffset(nullptr, DwarfReg, Offset));
+  }
+  for (unsigned CSRIdx : ExtraRestoreCFI.lookup(MBB.getNumber()).set_bits()) {
+    const CalleeSavedInfo &CSI = CSIs[CSRIdxToCSIIdx[CSRIdx]];
+    unsigned DwarfReg = MRI->getDwarfRegNum(CSI.getReg(), true);
+    // .cfi_restore %reg
+    emitCFIInstruction(MCCFIInstruction::createRestore(nullptr, DwarfReg));
   }
 }
 

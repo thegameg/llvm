@@ -551,6 +551,22 @@ static void insertCSRSaves(MachineBasicBlock &SaveBlock,
       TII.storeRegToStackSlot(SaveBlock, I, Reg, true, CS.getFrameIdx(), RC,
                               TRI);
       std::prev(I)->setFlag(MachineInstr::FrameSetup);
+
+      // FIXME: ShrinkWrap2: Check wether we need CFI, even though it is
+      // ignored by the AsmPrinter.
+      // Emit CFI for every CSR spill:
+      // .cfi_offset %reg, off
+      MachineFrameInfo &MFI = Fn.getFrameInfo();
+      if (MFI.getShouldUseShrinkWrap2()) {
+        unsigned Offset = MFI.getObjectOffset(CS.getFrameIdx());
+        const MCRegisterInfo *MRI = Fn.getMMI().getContext().getRegisterInfo();
+        unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+        unsigned CFIIndex = Fn.addFrameInst(
+            MCCFIInstruction::createOffset(nullptr, DwarfReg, Offset));
+        BuildMI(SaveBlock, I, {}, TII.get(TargetOpcode::CFI_INSTRUCTION))
+            .addCFIIndex(CFIIndex);
+      }
+
     }
   }
 }
@@ -577,6 +593,21 @@ static void insertCSRRestores(MachineBasicBlock &RestoreBlock,
              "loadRegFromStackSlot didn't insert any code!");
       // Insert in reverse order.  loadRegFromStackSlot can insert
       // multiple instructions.
+      // FIXME: ShrinkWrap2: Check wether we need CFI, even though it is
+      // ignored by the AsmPrinter.
+      // Emit CFI for every CSR restore.
+      // .cfi_restore %reg
+      MachineFrameInfo &MFI = Fn.getFrameInfo();
+      if (MFI.getShouldUseShrinkWrap2()) {
+        MachineModuleInfo &MMI = Fn.getMMI();
+        const MCRegisterInfo *MRI = MMI.getContext().getRegisterInfo();
+        unsigned DwarfReg = MRI->getDwarfRegNum(Reg, true);
+        unsigned CFIIndex =
+            Fn.addFrameInst(MCCFIInstruction::createRestore(nullptr, DwarfReg));
+        BuildMI(RestoreBlock, I, {}, TII.get(TargetOpcode::CFI_INSTRUCTION))
+            .addCFIIndex(CFIIndex);
+      }
+
     }
   }
 }

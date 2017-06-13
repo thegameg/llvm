@@ -22,6 +22,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/CodeGen/DwarfStringPoolEntry.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -152,6 +153,24 @@ private:
   /// A vector of all debug/EH info emitters we should use. This vector
   /// maintains ownership of the emitters.
   SmallVector<HandlerInfo, 1> Handlers;
+
+  // FIXME: ShrinkWrap2: Find a way to emit CFI directives compatible with
+  // shrink-wrapping. We now emit .cfi_offset and .cfi_restore for saves and
+  // restores, we re-process them to see if the final layout needs more work or
+  // not based on the block order.
+
+  typedef DenseMap<unsigned, BitVector> CSRMap;
+
+  // FIXME: This shouldn't be here.
+  DenseMap<unsigned, unsigned> RegToCSRIdx;
+
+  // FIXME: ShrinkWrap2: Compute CFI save / restore directives based on the
+  // final layout.
+  CSRMap ExtraSaveCFI;
+  CSRMap ExtraRestoreCFI;
+
+  // FIXME: ShrinkWrap2: How does this work with stack shrink-wrapping. Is there
+  // a way to "restore" everything?
 
 public:
   struct SrcMgrDiagInfo {
@@ -305,6 +324,8 @@ public:
   /// Returns false if needsCFIMoves() == CFI_M_EH for any function
   /// in the module.
   bool needsOnlyDebugCFIMoves() const { return isCFIMoveForDebugging; }
+
+  void generateShrinkWrappingCFI();
 
   bool needsSEHMoves();
 

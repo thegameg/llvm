@@ -680,13 +680,11 @@ void PEI::doSpillCalleeSavedRegs(MachineFunction &Fn) {
   CalleeSavedMap Restores;
 
   if (!Fn.empty() && isShrinkWrapEnabled(Fn)) {
-    ShrinkWrapper SW(Fn);
     auto *MBFI = &getAnalysis<MachineBlockFrequencyInfo>();
-    if (SW.areResultsInteresting(MBFI)) {
-      MachineFrameInfo &MFI = Fn.getFrameInfo();
-      MFI.setShouldUseShrinkWrap2(true);
-      SW.emitRemarks(ORE, MBFI);
-    }
+    MachineFrameInfo &MFI = Fn.getFrameInfo();
+    ShrinkWrapper SW(Fn);
+    MFI.setShouldUseShrinkWrap2(SW.areResultsInteresting(MBFI));
+    SW.emitRemarks(ORE, MBFI);
     auto &SWSaves = SW.getSaves();
     auto &SWRestores = SW.getRestores();
     const MCPhysReg *CSRegs = Fn.getRegInfo().getCalleeSavedRegs();

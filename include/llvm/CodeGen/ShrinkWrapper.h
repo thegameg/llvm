@@ -172,6 +172,7 @@ class ShrinkWrapper {
   // FIXME: ShrinkWrap2: Use the one from ShrinkWrapInfo, but detecting critical
   // edges may need to modify it.
   BBResultSetMap Uses;
+  BBResultSetMap OriginalUses;
 
   // FIXME: ShrinkWrap2: Is this the correct place to compute this?
   /// Blocks that never return.
@@ -276,7 +277,7 @@ class ShrinkWrapper {
   /// * Verify if the results are better than obvious results, like:
   ///   * CSR used in a single MBB: only one save and one restore.
   /// * Remove empty entries from the Saves / Restores maps.
-  void postProcessResults(const BBResultSetMap &OldUses);
+  void postProcessResults();
   /// Compute the shrink-wrapping cost, which is based on block frequency.
   unsigned computeShrinkWrappingCost(MachineBlockFrequencyInfo *MBFI) const;
   /// Compute the same cost, in entry / return blocks, which is based on block
@@ -285,6 +286,8 @@ class ShrinkWrapper {
   /// Verify save / restore points by walking the CFG.
   /// This asserts if anything went wrong.
   void verifySavesRestores() const;
+
+  unsigned numberOfUselessSaves() const;
 
   /// Dump the final shrink-wrapping results.
   void dumpResults() const;

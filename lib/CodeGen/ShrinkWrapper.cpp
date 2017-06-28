@@ -506,18 +506,18 @@ void ShrinkWrapper::dumpAttributes(unsigned Elt,
 }
 #endif // LLVM_ENABLE_DUMP
 
-void ShrinkWrapper::postProcessResults(const BBResultSetMap &OldUses) {
+void ShrinkWrapper::postProcessResults() {
   // If there is only one use of the element, and multiple saves / restores,
   // remove them and place the save / restore at the used MBB's boundaries.
   for (unsigned Elt : AllElts.set_bits()) {
     auto HasElt = [&](const TargetResultSet &Res) {
       return Res.empty() ? false : Res.test(Elt);
     };
-    auto Found1 = find_if(OldUses, HasElt);
-    auto Found2 = Found1 == OldUses.end()
+    auto Found1 = find_if(OriginalUses, HasElt);
+    auto Found2 = Found1 == OriginalUses.end()
                       ? Found1
-                      : std::find_if(std::next(Found1), OldUses.end(), HasElt);
-    if (Found1 != OldUses.end() && Found2 == OldUses.end()) {
+                      : std::find_if(std::next(Found1), OriginalUses.end(), HasElt);
+    if (Found1 != OriginalUses.end() && Found2 == OriginalUses.end()) {
       // Gather all the saves.
       MBBSet SavesElt(MF.getNumBlockIDs());
       for (auto &KV : Saves) {
@@ -547,7 +547,7 @@ void ShrinkWrapper::postProcessResults(const BBResultSetMap &OldUses) {
         Restores[MBBNum].reset(Elt);
 
       // Add it to the unique block that uses it.
-      unsigned MBBNum = std::distance(OldUses.begin(), Found1);
+      unsigned MBBNum = std::distance(OriginalUses.begin(), Found1);
       for (auto *Map : {&Saves, &Restores}) {
         TargetResultSet &Elts = (*Map)[MBBNum];
         if (Elts.empty())
@@ -724,11 +724,89 @@ void ShrinkWrapper::verifySavesRestores() const {
   verifySavesRestoresRec(&MF.front());
 }
 
+unsigned
+ShrinkWrapper::numberOfUselessSaves() const {
+  // Keep track of the currently saved elements.
+  TargetResultSet Saved(SWI->getNumResultBits());
+  unsigned UselessSaves = 0;
+  TargetResultSet Used(SWI->getNumResultBits());
+  DenseMap<unsigned,
+           SmallVector<std::pair<TargetResultSet, TargetResultSet>, 2>>
+      Cache;
+
+  std::function<void(const MachineBasicBlock *)> numberOfUselessSavesRec =
+      [&](const MachineBasicBlock *MBB) {
+        unsigned MBBNum = MBB->getNumber();
+        if (const SCCLoop *C = SI.getSCCLoopFor(MBBNum))
+          if (MBBNum != C->getNumber())
+            return;
+
+        auto& Vect = Cache[MBBNum];
+        if (find_if(
+                Vect,
+                [&](const std::pair<TargetResultSet, TargetResultSet> &Elt) {
+                  return Elt.first == Saved && Elt.second == Used;
+                }) != Vect.end())
+          return;
+        Vect.emplace_back(Saved, Used);
+
+        const TargetResultSet &SavesMBB = Saves.lookup(MBBNum);
+        const TargetResultSet &RestoresMBB = Restores.lookup(MBBNum);
+
+        // Save the elements to be saved.
+        for (unsigned Elt : SavesMBB.set_bits()) {
+          Saved.set(Elt);
+          VERBOSE_DEBUG(dbgs() << "IN: BB#" << MBBNum << ": Save ";
+                        SWI->printElt(Elt, dbgs()); dbgs() << ".\n");
+        }
+
+        auto& UsesHere = OriginalUses[MBBNum];
+        Used |= UsesHere;
+
+        VERBOSE_DEBUG(
+            dbgs() << "BB#" << MBBNum << " Used: "; for (unsigned Elt
+                                                         : Used.set_bits()) {
+              SWI->printElt(Elt, dbgs());
+              dbgs() << " ,";
+            } dbgs() << '\n');
+
+        // Restore the elements to be restored.
+        for (int Elt : RestoresMBB.set_bits()) {
+          if (!Used.test(Elt)) {
+            VERBOSE_DEBUG(SWI->printElt(Elt, dbgs());
+                          dbgs() << " is restored in BB#" << MBBNum
+                                 << " but never used.\n");
+            ++UselessSaves;
+          }
+          Saved.reset(Elt);
+          Used.reset(Elt);
+          VERBOSE_DEBUG(dbgs() << "IN: BB#" << MBBNum << ": Restore ";
+                        SWI->printElt(Elt, dbgs()); dbgs() << ".\n");
+        }
+
+        auto SavedState = Saved;
+        auto UsedState = Used;
+
+        for (const MachineBasicBlock *Succ : blockSuccessors(MBBNum)) {
+          numberOfUselessSavesRec(Succ);
+        }
+
+        Saved = SavedState;
+        Used = UsedState;
+      };
+
+  numberOfUselessSavesRec(&MF.front());
+
+  return UselessSaves;
+}
+
 void ShrinkWrapper::emitRemarks(MachineOptimizationRemarkEmitter *ORE,
                                 MachineBlockFrequencyInfo *MBFI) const {
   unsigned Cost = computeShrinkWrappingCost(MBFI);
   unsigned DefaultCost = computeDefaultCost(MBFI);
   int Improvement = DefaultCost - Cost;
+  if (Improvement < 0)
+    return;
   MachineOptimizationRemarkAnalysis R(DEBUG_TYPE, "ShrinkWrapped", {},
                                       &MF.front());
   R << "Shrink-wrapped function with cost " << ore::NV("ShrinkWrapCost", Cost)
@@ -737,6 +815,9 @@ void ShrinkWrapper::emitRemarks(MachineOptimizationRemarkEmitter *ORE,
     << ore::NV("OriginalShrinkWrapCost", DefaultCost)
     << ", during which attributes were recomputed "
     << ore::NV("ShrinkWrapRecomputed", AttributesRecomputed) << " times.";
+  unsigned Useless = numberOfUselessSaves();
+  if (Useless)
+    R << "Found " << ore::NV("UselessSavesNum", Useless) << " useless saves.";
   ORE->emit(R);
 }
 
@@ -839,7 +920,7 @@ ShrinkWrapper::ShrinkWrapper(const MachineFunction &MF,
   // as original ones. This is needed for postProcessResults.
   // FIXME: ShrinkWrap2: Probably just save / restore once per block if there
   // is only one register from the beginning.
-  auto OldUses = Uses;
+  OriginalUses = Uses;
 
   AllElts.resize(SWI->getNumResultBits());
   for (const auto &Use : Uses)
@@ -891,7 +972,7 @@ ShrinkWrapper::ShrinkWrapper(const MachineFunction &MF,
         Restores[MBB.getNumber()] |= EntryUses;
     }
   }
-  postProcessResults(OldUses);
+  postProcessResults();
 
   DEBUG(dbgs() << "**** Shrink-wrapping results\n");
   // FIXME: ShrinkWrap2: Check if there are any modifications before printing.

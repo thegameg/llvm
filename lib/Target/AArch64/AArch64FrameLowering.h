@@ -15,6 +15,7 @@
 #define LLVM_LIB_TARGET_AARCH64_AARCH64FRAMELOWERING_H
 
 #include "llvm/Target/TargetFrameLowering.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 
 namespace llvm {
 
@@ -82,8 +83,17 @@ public:
                               const TargetRegisterInfo *TRI,
                               std::vector<CalleeSavedInfo> &CSI) const override;
 
+  // FIXME: ShrinkWrap2: Trick to cmpute stack-shrink-wrapping after we did csr
+  // shrink-wrapping.
+  void processSaveRestorePoints(MachineFunction &MF, CalleeSavedMap &Saves,
+                                CalleeSavedMap &Restores) const override;
   std::unique_ptr<ShrinkWrapInfo>
   createCSRShrinkWrapInfo(const MachineFunction &MF) const override;
+
+  SmallVector<MachineBasicBlock *, 4>
+  getPrologues(MachineFunction &MF) const override;
+  SmallVector<MachineBasicBlock *, 4>
+  getEpilogues(MachineFunction &MF) const override;
 
 private:
   bool shouldCombineCSRLocalStackBump(MachineFunction &MF,

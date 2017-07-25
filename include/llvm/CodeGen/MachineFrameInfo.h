@@ -315,6 +315,7 @@ private:
   // FIXME: ShrinkWrap2: Fix name.
   // FIXME: ShrinkWrap2: Merge shrink-wrapped / non-shrink-wrapped paths.
   bool ShouldUseShrinkWrap2 = false;
+  bool ShouldUseStackShrinkWrap2 = false;
 
 public:
   // FIXME: ShrinkWrap2: Temporary hack. Remove.
@@ -736,6 +737,13 @@ public:
   // FIXME: ShrinkWrap2: Name.
   // FIXME: ShrinkWrap2: Merge shrink-wrapped / non-shrink-wrapped paths.
   void setShouldUseShrinkWrap2(bool New) { ShouldUseShrinkWrap2 = New; }
+  // FIXME: StackShrinkWrap2: Name.
+  // FIXME: StackShrinkWrap2: Merge StackShrink-wrapped / non-StackShrink-wrapped paths.
+  bool getShouldUseStackShrinkWrap2() const { return ShouldUseStackShrinkWrap2; }
+  // FIXME: StackShrinkWrap2: Name.
+  // FIXME: StackShrinkWrap2: Merge StackShrink-wrapped / non-StackShrink-wrapped paths.
+  void setShouldUseStackShrinkWrap2(bool New) { ShouldUseStackShrinkWrap2 = New; }
+
 
   /// Return a set of physical registers that are pristine.
   ///

@@ -110,6 +110,7 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/CodeGen/ShrinkWrapper.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/DataLayout.h"
@@ -142,6 +143,9 @@ static cl::opt<bool> EnableRedZone("aarch64-redzone",
 STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 
 static bool produceCompactUnwindFrame(const MachineFunction &MF);
+static unsigned estimateRSStackSizeLimit(MachineFunction &MF);
+static unsigned getPrologueDeath(MachineFunction &MF, unsigned Reg);
+static bool hasFrame(const MachineFunction &MF);
 static unsigned estimateRSStackSizeLimit(MachineFunction &MF);
 
 class AArch64CSRShrinkWrapInfo final : public ShrinkWrapInfo {
@@ -183,29 +187,19 @@ public:
     for (BitVector &BV : Uses)
       SavedRegs |= BV;
 
-    auto *EntrySaves = &Uses[MF.front().getNumber()];
-    if (EntrySaves->empty())
-      EntrySaves->resize(getNumResultBits());
+    BitVector &EntryCSRs = AFI->getEntryCSRs();
+    if (EntryCSRs.empty())
+      EntryCSRs.resize(getNumResultBits());
 
     const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
     // The frame record needs to be created by saving the appropriate registers
     if (TFI->hasFP(MF)) {
-      // The frame pointer needs to be used in the entry and return of a
-      // function, to prevent optimizations.
-      EntrySaves->set(AArch64::FP);
+      EntryCSRs.set(AArch64::FP);
       SavedRegs.set(AArch64::FP);
-      for (const MachineBasicBlock &MBB : MF) {
-        if (MBB.isReturnBlock()) {
-          BitVector &Use = Uses[MBB.getNumber()];
-          if (Use.empty())
-            Use.resize(getNumResultBits());
-          Use.set(AArch64::FP);
-          EntrySaves = &Uses[MF.front().getNumber()];
-        }
-      }
-      // FIXME: ShrinkWrap2: Should we let LR be shrink-wrapped?
-      // EntrySaves.set(AArch64::LR);
-      // SavedRegs.set(AArch64::LR);
+#if 0 // FIXME: ShrinkWrap2: Should we let LR be shrink-wrapped?
+      EntryCSRs.set(AArch64::LR);
+      SavedRegs.set(AArch64::LR);
+#endif
     }
 
     unsigned BasePointerReg = AArch64::NoRegister;
@@ -220,18 +214,8 @@ public:
 
       // Add the base pointer register to SavedRegs if it is callee-save.
       if (Reg == BasePointerReg) {
-        EntrySaves->set(RegIdx);
+        EntryCSRs.set(RegIdx);
         SavedRegs.set(RegIdx);
-        // FIXME: ShrinkWrap2: gather the return blocks and re-use them.
-        for (const MachineBasicBlock &MBB : MF) {
-          if (MBB.isReturnBlock()) {
-            BitVector &Use = Uses[MBB.getNumber()];
-            if (Use.empty())
-              Use.resize(getNumResultBits());
-            Use.set(RegIdx);
-            EntrySaves = &Uses[MF.front().getNumber()];
-          }
-        }
       }
 
       bool RegUsed = SavedRegs.test(RegIdx);
@@ -271,6 +255,8 @@ public:
 
     // If any callee-saved registers are used, the frame cannot be eliminated.
     unsigned NumRegsSpilled = SavedRegs.count();
+    if (hasFrame(MF))
+      NumRegsSpilled += 1; // FP
     bool CanEliminateFrame = NumRegsSpilled == 0;
 
     // The CSR spill slots have not been allocated yet, so estimateStackSize
@@ -294,15 +280,13 @@ public:
       if (!ExtraCSSpill && UnspilledCSGPR != AArch64::NoRegister) {
         DEBUG(dbgs() << "Spilling " << PrintReg(UnspilledCSGPR, RegInfo)
                      << " to get a scratch register.\n");
-        EntrySaves->set(UnspilledCSGPRIdx);
-        // FIXME: ShrinkWrap2: Mark it in the return blocks too.
+        EntryCSRs.set(UnspilledCSGPRIdx);
         SavedRegs.set(UnspilledCSGPRIdx);
         // MachO's compact unwind format relies on all registers being stored in
         // pairs, so if we need to spill one extra for BigStack, then we need to
         // store the pair.
         if (produceCompactUnwindFrame(MF)) {
-          EntrySaves->set(UnspilledCSGPRPairedIdx);
-          // FIXME: ShrinkWrap2: Mark it in the return blocks too.
+          EntryCSRs.set(UnspilledCSGPRPairedIdx);
           SavedRegs.set(UnspilledCSGPRPairedIdx);
         }
         ExtraCSSpill = UnspilledCSGPRPaired;
@@ -364,6 +348,17 @@ static unsigned estimateRSStackSizeLimit(MachineFunction &MF) {
   return 255;
 }
 
+static bool hasFrame(const MachineFunction &MF) {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
+  // Retain behavior of always omitting the FP for leaf functions when possible.
+  return (MFI.hasCalls() &&
+          MF.getTarget().Options.DisableFramePointerElim(MF)) ||
+    MFI.hasVarSizedObjects() || MFI.isFrameAddressTaken() ||
+    MFI.hasStackMap() || MFI.hasPatchPoint() ||
+    RegInfo->needsStackRealignment(MF);
+}
+
 bool AArch64FrameLowering::canUseRedZone(const MachineFunction &MF) const {
   if (!EnableRedZone)
     return false;
@@ -382,14 +377,7 @@ bool AArch64FrameLowering::canUseRedZone(const MachineFunction &MF) const {
 /// hasFP - Return true if the specified function should have a dedicated frame
 /// pointer register.
 bool AArch64FrameLowering::hasFP(const MachineFunction &MF) const {
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
-  // Retain behavior of always omitting the FP for leaf functions when possible.
-  return (MFI.hasCalls() &&
-          MF.getTarget().Options.DisableFramePointerElim(MF)) ||
-         MFI.hasVarSizedObjects() || MFI.isFrameAddressTaken() ||
-         MFI.hasStackMap() || MFI.hasPatchPoint() ||
-         RegInfo->needsStackRealignment(MF);
+  return hasFrame(MF);
 }
 
 /// hasReservedCallFrame - Under normal circumstances, when a frame pointer is
@@ -722,7 +710,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
   } else if (PrologueSaveSize != 0) {
     // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
     // of CSR.
-    if (MFI.getShouldUseShrinkWrap2()) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
       emitFrameOffset(MBB, MBBI, DL, AArch64::SP, AArch64::SP, -PrologueSaveSize,
                       TII, MachineInstr::FrameSetup);
     }
@@ -922,9 +910,8 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
           .setMIFlags(MachineInstr::FrameSetup);
     }
 
-
     // FIXME: ShrinkWrap2: We emit CFI when we emit the instructions.
-    if (MFI.getShouldUseShrinkWrap2())
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()))
       return;
     // Now emit the moves for whatever callee saved regs we have (including FP,
     // LR if those are saved).
@@ -947,7 +934,7 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
       RetOpcode == AArch64::TCRETURNri;
   }
   int NumBytes = MFI.getStackSize();
-  const AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
+  AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
 
   // All calls are tail calls in GHC calling conv, and functions have no
   // prologue/epilogue.
@@ -1008,7 +995,7 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
 
   // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
   // of CSR.
-  if (!MFI.getShouldUseShrinkWrap2()) {
+  if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
   if (!CombineSPBump && PrologueSaveSize != 0)
     convertCalleeSaveRestoreToSPPrePostIncDec(
         MBB, std::prev(MBB.getFirstTerminator()), DL, TII, PrologueSaveSize);
@@ -1036,7 +1023,7 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
 
   // FIXME: ShrinkWrap2: For now, we can't use push / pop for save / restore
   // of CSR, so we have to restore SP manually.
-  if (MFI.getShouldUseShrinkWrap2()) {
+  if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
     emitFrameOffset(MBB, MBB.getFirstTerminator(), DL, AArch64::SP, AArch64::SP,
                     PrologueSaveSize, TII, MachineInstr::FrameDestroy);
   }
@@ -1174,7 +1161,7 @@ static unsigned getPrologueDeath(MachineFunction &MF, unsigned Reg) {
 static bool produceCompactUnwindFrame(const MachineFunction &MF) {
   // FIXME: ShrinkWrap2: Fix compact unwinding.
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  if (MFI.getShouldUseShrinkWrap2())
+  if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()))
     return false;
   const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
   AttributeList Attrs = MF.getFunction()->getAttributes();
@@ -1198,7 +1185,7 @@ static void computeCalleeSaveRegisterPairs(
   // MachO's compact unwind format relies on all registers being stored in
   // pairs.
   // FIXME: ShrinkWrap2: Fix compact unwind format.
-  if (!MFI.getShouldUseShrinkWrap2()) {
+  if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
   assert((!produceCompactUnwindFrame(MF) ||
           CC == CallingConv::PreserveMost ||
           (Count & 1) == 0) &&
@@ -1217,7 +1204,7 @@ static void computeCalleeSaveRegisterPairs(
     // Add the next reg to the pair if it is in the same register class.
     // FIXME: ShrinkWrap2: Creating real pairs during shrink-wrapping may have
     // double save / restores, that can corrupt registers.
-    if (!MFI.getShouldUseShrinkWrap2()) {
+    if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
     if (i + 1 < Count) {
       unsigned NextReg = CSI[i + 1].getReg();
       if ((RPI.IsGPR && AArch64::GPR64RegClass.contains(NextReg)) ||
@@ -1233,7 +1220,7 @@ static void computeCalleeSaveRegisterPairs(
     // The order of the registers in the list is controlled by
     // getCalleeSavedRegs(), so they will always be in-order, as well.
     // FIXME: ShrinkWrap2: Make it work with shrink-wrapping.
-    if (!MFI.getShouldUseShrinkWrap2()) {
+    if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
     assert((!RPI.isPaired() ||
             (CSI[i].getFrameIdx() + 1 == CSI[i + 1].getFrameIdx())) &&
            "Out of order callee saved regs!");
@@ -1242,7 +1229,7 @@ static void computeCalleeSaveRegisterPairs(
     // MachO's compact unwind format relies on all registers being stored in
     // adjacent register pairs.
     // FIXME: ShrinkWrap2: Fix compact unwind format.
-    if (!MFI.getShouldUseShrinkWrap2()) {
+    if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
     assert((!produceCompactUnwindFrame(MF) ||
             CC == CallingConv::PreserveMost ||
             (RPI.isPaired() &&
@@ -1254,7 +1241,7 @@ static void computeCalleeSaveRegisterPairs(
     RPI.FrameIdx = CSI[i].getFrameIdx();
 
     // FIXME: ShrinkWrap2: We are never using pairs.
-    if (!MFI.getShouldUseShrinkWrap2() && Count * 8 != AFI->getCalleeSavedStackSize() && !RPI.isPaired()) {
+    if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2()) && Count * 8 != AFI->getCalleeSavedStackSize() && !RPI.isPaired()) {
       // Round up size of non-pair to pair size if we need to pad the
       // callee-save area to ensure 16-byte alignment.
       Offset -= 16;
@@ -1303,7 +1290,7 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
       MMI.hasDebugInfo() || MF.getFunction()->needsUnwindTableEntry();
   // FIXME: ShrinkWrap2: We should always use AFI->getRegPairs(), or at least
   // avoid calling computeCalleeSaveRegisterPair more than once.
-  if (!MFI.getShouldUseShrinkWrap2()) {
+  if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
     RegPairs.clear();
     computeCalleeSaveRegisterPairs(MF, CSI, TRI, RegPairs);
   }
@@ -1317,7 +1304,7 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
 
     // FIXME: ShrinkWrap2: Skip all the registers that are not related to this
     // block.
-    if (MFI.getShouldUseShrinkWrap2()) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
       if (find_if(CSI, [&](const CalleeSavedInfo &CS) {
             return CS.getReg() == Reg1;
           }) == CSI.end())
@@ -1356,11 +1343,14 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
     // use SP, then we have to keep track of the offsets that are used to store
     // / load the CSR, and update them during prologue emission, where we have
     // the information about the local stack size.
-    bool isEntryBlock = &MF.front() == &MBB;
+    bool isEntryBlock =
+        MFI.getShouldUseStackShrinkWrap2()
+            ? AFI->getShrinkWrapPrologues().test(MBB.getNumber())
+            : &MBB == &MF.front();
     bool ShouldUseSP = !hasFP(*MBB.getParent()) || isEntryBlock;
     int CSStackSize = AFI->getCalleeSavedStackSize();
     int Imm = -(CSStackSize - 16 - int(RPI.Offset) * 8) / 8;
-    if (MFI.getShouldUseShrinkWrap2() && !ShouldUseSP) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()) && !ShouldUseSP) {
       if (StrOpc == AArch64::STRXui)
         StrOpc = AArch64::STURXi;
       else if (StrOpc == AArch64::STRDui)
@@ -1378,7 +1368,7 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
           MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx + 1),
           MachineMemOperand::MOStore, 8, 8));
     }
-    if (MFI.getShouldUseShrinkWrap2()) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
       if (ShouldUseSP) {
         MIB.addReg(Reg1, getPrologueDeath(MF, Reg1))
             .addReg(AArch64::SP)
@@ -1402,7 +1392,7 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
     MIB.addMemOperand(MF.getMachineMemOperand(
         MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx),
         MachineMemOperand::MOStore, 8, 8));
-  if (MFI.getShouldUseShrinkWrap2() && needsCFI) {
+  if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()) && needsCFI) {
     int64_t Offset = ((-(CSStackSize - 16 - int(RPI.Offset) * 8) / 8) - 2) * 8;
     const MCRegisterInfo *MCRI = STI.getRegisterInfo();
     unsigned DwarfReg = MCRI->getDwarfRegNum(Reg1, true);
@@ -1438,7 +1428,7 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
 
   // FIXME: ShrinkWrap2: We should always use AFI->getRegPairs(), or at least
   // avoid  calling computeCalleeSaveRegisterPair more than once.
-  if (!MFI.getShouldUseShrinkWrap2()) {
+  if ((!MFI.getShouldUseShrinkWrap2() && !MFI.getShouldUseStackShrinkWrap2())) {
     RegPairs.clear();
     computeCalleeSaveRegisterPairs(MF, CSI, TRI, RegPairs);
   }
@@ -1451,7 +1441,7 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
 
     // FIXME: ShrinkWrap2: Skip all the registers that are not related to this
     // block.
-    if (MFI.getShouldUseShrinkWrap2()) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
       if (find_if(CSI, [&](const CalleeSavedInfo &CS) {
             return CS.getReg() == Reg1;
           }) == CSI.end())
@@ -1480,11 +1470,14 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
           dbgs() << ")\n");
 
     // FIXME: ShrinkWrap2: See comment in spillCalleeSavedRegisters.
-    bool isReturnBlock = MBB.isReturnBlock();
+    bool isReturnBlock =
+        MFI.getShouldUseStackShrinkWrap2()
+            ? AFI->getShrinkWrapEpilogues().test(MBB.getNumber())
+            : MBB.isReturnBlock();
     bool ShouldUseSP = !hasFP(*MBB.getParent()) || isReturnBlock;
     int CSStackSize = AFI->getCalleeSavedStackSize();
     int Imm = -(CSStackSize - 16 - int(RPI.Offset) * 8) / 8;
-    if (MFI.getShouldUseShrinkWrap2() && !ShouldUseSP) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()) && !ShouldUseSP) {
       if (LdrOpc == AArch64::LDRXui)
         LdrOpc = AArch64::LDURXi;
       else if (LdrOpc == AArch64::LDRDui)
@@ -1499,7 +1492,7 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
           MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx + 1),
           MachineMemOperand::MOLoad, 8, 8));
     }
-    if (MFI.getShouldUseShrinkWrap2()) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())) {
       if (ShouldUseSP) {
         MIB.addReg(Reg1, getDefRegState(true))
             .addReg(AArch64::SP)
@@ -1526,7 +1519,7 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
         MachinePointerInfo::getFixedStack(MF, RPI.FrameIdx),
         MachineMemOperand::MOLoad, 8, 8));
 
-    if (MFI.getShouldUseShrinkWrap2() && needsCFI) {
+    if ((MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2()) && needsCFI) {
       unsigned DwarfReg = MRI->getDwarfRegNum(Reg1, true);
       unsigned CFIIndex =
           MF.addFrameInst(MCCFIInstruction::createRestore(nullptr, DwarfReg));
@@ -1672,4 +1665,158 @@ bool AArch64FrameLowering::enableStackSlotScavenging(
 std::unique_ptr<ShrinkWrapInfo>
 AArch64FrameLowering::createCSRShrinkWrapInfo(const MachineFunction &MF) const {
   return llvm::make_unique<AArch64CSRShrinkWrapInfo>(MF);
+}
+
+void AArch64FrameLowering::processSaveRestorePoints(
+    MachineFunction &MF, CalleeSavedMap &Saves,
+    CalleeSavedMap &Restores) const {
+
+  AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
+  BitVector &Prologues = AFI->getShrinkWrapPrologues();
+  BitVector &Epilogues = AFI->getShrinkWrapEpilogues();
+
+  class AArch64StackShrinkWrapInfo final : public ShrinkWrapInfo {
+  public:
+    unsigned getNumResultBits() const { return 1; };
+
+    AArch64StackShrinkWrapInfo(const MachineFunction &MF,
+                               const CalleeSavedMap &Saves,
+                               const CalleeSavedMap &Restores)
+        : ShrinkWrapInfo(MF) {
+      auto Has = [&](const CalleeSavedMap &Map, MachineBasicBlock &MBB) {
+        auto Found = Map.find(&MBB);
+        if (Found == Map.end())
+          return false;
+        return Found->second.size() != 0;
+      };
+
+      for (auto &MBB : MF) {
+        if (Has(Saves, const_cast<MachineBasicBlock &>(MBB)) ||
+            Has(Restores, const_cast<MachineBasicBlock &>(MBB))) {
+          auto &MBBUses = Uses[MBB.getNumber()];
+          if (MBBUses.empty())
+            MBBUses.resize(1);
+          MBBUses.set(0);
+          continue;
+        }
+        for (auto &MI : MBB) {
+          for (auto &MO : MI.operands()) {
+            if (MO.isFI() || (MO.isReg() && (MO.getReg() == AArch64::SP ||
+                                             MO.getReg() == AArch64::FP))) {
+              auto &MBBUses = Uses[MBB.getNumber()];
+              if (MBBUses.empty())
+                MBBUses.resize(1);
+              MBBUses.set(0);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  ShrinkWrapper SW(
+      MF, llvm::make_unique<AArch64StackShrinkWrapInfo>(MF, Saves, Restores));
+  typedef DenseMap<unsigned, BitVector> SparseBBRegSetMap;
+  // Get a bitvector of all the basic blocks that need saving / restoring.
+  auto Transform = [&](const SparseBBRegSetMap &Map, BitVector &Result) {
+    const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+    for (auto &KV : Map) {
+      unsigned MBBNum = KV.first;
+      bool isSave = KV.second.test(0);
+      // If we can't use it as a prologue, forget about everything.
+      // FIXME: ShrinkWrap2: Emit remarks.
+      if (!TFI->canUseAsPrologue(*MF.getBlockNumbered(MBBNum))) {
+        Result.reset();
+        return;
+      }
+
+      if (isSave) {
+        if (Result.empty())
+          Result.resize(MF.getNumBlockIDs());
+        Result.set(MBBNum);
+      }
+    }
+  };
+  Transform(SW.getSaves(), Prologues);
+  Transform(SW.getRestores(), Epilogues);
+
+  // FIXME: ShrinkWrap2: This should either have its own function, or be
+  // simplified to remove the frame pointer thing. Same should be happenning
+  // with the base pointer and all the things that are added to the "entry"
+  // block.
+  MachineFrameInfo &MFI = const_cast<MachineFrameInfo &>(MF.getFrameInfo());
+  const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
+  const MCPhysReg *CSRegs = RegInfo->getCalleeSavedRegs(&MF);
+  // If one of the transformation went wrong, abort everything.
+  auto AddAllToBlock = [&](MachineBasicBlock *MBB, CalleeSavedMap &Map) {
+    BitVector &EntryCSRs = AFI->getEntryCSRs();
+    for (unsigned CSRIdx : EntryCSRs.set_bits()) {
+      unsigned Reg = CSRegs[CSRIdx];
+      if (none_of(Map[MBB], [&](const CalleeSavedInfo &CSI) {
+            return CSI.getReg() == Reg;
+          })) {
+        Map[MBB].emplace(Map[MBB].begin(), Reg);
+      }
+    }
+  };
+
+  if (!Prologues.count() || !Epilogues.count()) {
+    Prologues.reset();
+    Epilogues.reset();
+
+    // And add the frame pointer to be saved / restored in the entry / return
+    // blocks.
+    if (hasFrame(MF)) {
+      for (const MachineBasicBlock &CMBB : MF) {
+        auto *MBB = const_cast<MachineBasicBlock *>(&CMBB);
+        auto *Map = [&]() -> CalleeSavedMap * {
+          if (MBB == &MF.front())
+            return &Saves;
+          if (MBB->isReturnBlock())
+            return &Restores;
+          return nullptr;
+        }();
+        if (!Map)
+          continue;
+        AddAllToBlock(MBB, *Map);
+      }
+    }
+    return;
+  }
+  MFI.setShouldUseStackShrinkWrap2(true);
+  DEBUG_WITH_TYPE("shrink-wrap2", for (unsigned MBBNum
+                                       : Prologues.set_bits()) dbgs()
+                                      << "Prologue in BB#" << MBBNum << '\n');
+  DEBUG_WITH_TYPE("shrink-wrap2", for (unsigned MBBNum
+                                       : Epilogues.set_bits()) dbgs()
+                                      << "Epilogue in BB#" << MBBNum << '\n');
+
+  // Instead, add it to be saved at the prologue / epilogue block.
+  for (auto &KV : SW.getSaves()) {
+    auto *MBB = const_cast<MachineBasicBlock *>(MF.getBlockNumbered(KV.first));
+    AddAllToBlock(MBB, Saves);
+  }
+
+  for (auto &KV : SW.getRestores()) {
+    auto *MBB = const_cast<MachineBasicBlock *>(MF.getBlockNumbered(KV.first));
+    AddAllToBlock(MBB, Restores);
+  }
+}
+
+SmallVector<MachineBasicBlock *, 4>
+AArch64FrameLowering::getPrologues(MachineFunction &MF) const {
+  SmallVector<MachineBasicBlock *, 4> Blocks;
+  auto AFI = MF.getInfo<AArch64FunctionInfo>();
+  for (unsigned MBBNum : AFI->getShrinkWrapPrologues().set_bits())
+    Blocks.push_back(MF.getBlockNumbered(MBBNum));
+  return Blocks;
+}
+
+SmallVector<MachineBasicBlock *, 4>
+AArch64FrameLowering::getEpilogues(MachineFunction &MF) const {
+  SmallVector<MachineBasicBlock *, 4> Blocks;
+  auto AFI = MF.getInfo<AArch64FunctionInfo>();
+  for (unsigned MBBNum : AFI->getShrinkWrapEpilogues().set_bits())
+    Blocks.push_back(MF.getBlockNumbered(MBBNum));
+  return Blocks;
 }

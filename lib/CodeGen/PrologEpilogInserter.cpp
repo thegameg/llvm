@@ -471,7 +471,7 @@ static void assignCalleeSavedSpillSlots(MachineFunction &F,
   // could duplicate this code inside
   // AArch64FrameLowering::assignCalleeSavedSpillSlots, but we need to update
   // MinCSFrameIndex and MaxCSFrameIndex.
-  if (MFI.getShouldUseShrinkWrap2())
+  if (MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())
     TFI->processValidCalleeSavedInfo(F, RegInfo, CSI);
 }
 
@@ -640,7 +640,6 @@ void PEI::doSpillCalleeSavedRegsShrinkWrap2(MachineFunction &Fn,
   // assignCalleeSavedSpillSlots, that fills MFI.CalleeSavedInfo which is used
   // for the ENTIRE function. Then, we need to reassign the FrameIdx back to the
   // Saves / Restores map.
-  SmallVector<std::pair<std::vector<CalleeSavedInfo> *, unsigned>, 2> ToRemove;
   const std::vector<CalleeSavedInfo> &CSIs = MFI.getCalleeSavedInfo();
   for (auto *Map : {&Saves, &Restores}) {
     for (auto &Elt : *Map) {
@@ -654,21 +653,8 @@ void PEI::doSpillCalleeSavedRegsShrinkWrap2(MachineFunction &Fn,
         if (It != CSIs.end())
           // FIXME: ShrinkWrap2: const_cast...
           const_cast<CalleeSavedInfo &>(CSI).setFrameIdx(It->getFrameIdx());
-        else // Also, if we can't find it in the list, it means the target
-             // removed it. x86 does this for FP, since the spill is part of the
-             // prologue emission.
-          ToRemove.emplace_back(&Elt.second, Reg);
       }
     }
-  }
-  for (auto &Pair : ToRemove) {
-    std::vector<CalleeSavedInfo> &V = *Pair.first;
-    unsigned Reg = Pair.second;
-    V.erase(std::remove_if(V.begin(), V.end(),
-                           [&](const CalleeSavedInfo &CSI) {
-                             return CSI.getReg() == Reg;
-                           }),
-            V.end());
   }
 
   for (auto &Save : Saves)
@@ -717,10 +703,11 @@ void PEI::doSpillCalleeSavedRegs(MachineFunction &Fn) {
     };
     Transform(SWSaves, Saves);
     Transform(SWRestores, Restores);
+    TFI->processSaveRestorePoints(Fn, Saves, Restores);
   }
 
   // FIXME: ShrinkWrap2: Share code somehow.
-  if (MFI.getShouldUseShrinkWrap2())
+  if (MFI.getShouldUseShrinkWrap2() || MFI.getShouldUseStackShrinkWrap2())
     return doSpillCalleeSavedRegsShrinkWrap2(Fn, Saves, Restores);
 
   // Determine which of the registers in the callee save list should be saved.
@@ -1175,19 +1162,31 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
 ///
 void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   const TargetFrameLowering &TFI = *Fn.getSubtarget().getFrameLowering();
-
-  // FIXME: ShrinkWrap2: Stack alginment / adjustment / etc. go in emitPrologue.
-  // For now, we add these at the entry / exit of the function, and we spill
-  // callee saves using our own blocks. There should be a way to shrink-wrap the
-  // stack operations as well.
+  MachineFrameInfo &MFI = Fn.getFrameInfo();
+  MachineOptimizationRemarkAnalysis R(DEBUG_TYPE, "PECount", {}, &Fn.front());
 
   // Add prologue to the function...
-  for (MachineBasicBlock *SaveBlock : SaveBlocks)
+  auto TProl = TFI.getPrologues(Fn);
+  auto *SaveB = MFI.getShouldUseStackShrinkWrap2() && !TProl.empty()
+                    ? &TProl
+                    : &SaveBlocks;
+  R << "Shrink-wrapped stack with "
+    << ore::NV("PrologueNum", static_cast<unsigned>(SaveB->size()))
+    << " prologues.";
+  for (MachineBasicBlock *SaveBlock : *SaveB)
     TFI.emitPrologue(Fn, *SaveBlock);
 
   // Add epilogue to restore the callee-save registers in each exiting block.
-  for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
+  auto TEpil = TFI.getEpilogues(Fn);
+  auto *RestoreB = MFI.getShouldUseStackShrinkWrap2() && !TEpil.empty()
+                       ? &TEpil
+                       : &RestoreBlocks;
+  R << "Shrink-wrapped stack with "
+    << ore::NV("EpilogueNum", static_cast<unsigned>(RestoreB->size()))
+    << " epilogues.";
+  for (MachineBasicBlock *RestoreBlock : *RestoreB)
     TFI.emitEpilogue(Fn, *RestoreBlock);
+  ORE->emit(R);
 
   // FIXME: ShrinkWrap2: Will this still work?
   for (MachineBasicBlock *SaveBlock : SaveBlocks)

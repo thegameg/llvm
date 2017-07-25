@@ -115,6 +115,11 @@ class AArch64FunctionInfo final : public MachineFunctionInfo {
   /// fixed if local stack allocation happens afterwards.
   SmallVector<MachineOperand*, 8> CSROffsetsToFix;
 
+  // FIXME: ShrinkWrap2: Find somewhere else to put this.
+  BitVector ShrinkWrapPrologue;
+  BitVector ShrinkWrapEpilogue;
+  BitVector EntryCSRs;
+
 public:
   AArch64FunctionInfo() = default;
 
@@ -209,6 +214,23 @@ public:
   void addLOHDirective(MCLOHType Kind, MILOHArgs Args) {
     LOHContainerSet.push_back(MILOHDirective(Kind, Args));
     LOHRelated.insert(Args.begin(), Args.end());
+  }
+
+  BitVector &getShrinkWrapPrologues() { return ShrinkWrapPrologue; }
+  BitVector &getShrinkWrapEpilogues() { return ShrinkWrapEpilogue; }
+
+  BitVector &getEntryCSRs() { return EntryCSRs; }
+  const BitVector &getEntryCSRs() const { return EntryCSRs; }
+
+  bool isShrinkWrapPrologue(unsigned MBBNum) const {
+    if (ShrinkWrapPrologue.empty())
+      return false;
+    return ShrinkWrapPrologue.test(MBBNum);
+  }
+  bool isShrinkWrapEpilogue(unsigned MBBNum) const {
+    if (ShrinkWrapEpilogue.empty())
+      return false;
+    return ShrinkWrapEpilogue.test(MBBNum);
   }
 
 private:

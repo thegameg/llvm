@@ -336,6 +336,13 @@ public:
                               const TargetRegisterInfo *TRI,
                               std::vector<CalleeSavedInfo> &CSI) const {}
 
+  // FIXME: ShrinkWrap2: After finding save / restore points for CSRs, process
+  // them. We need this in AArch64FrameLowering.cpp to call stack
+  // shrink-wrapping *AFTER* we have the save / restore points.
+  virtual void processSaveRestorePoints(MachineFunction &MF,
+                                        CalleeSavedMap &Saves,
+                                        CalleeSavedMap &Restores) const {}
+
   /// Check if given function is safe for not having callee saved registers.
   /// This is used when interprocedural register allocation is enabled.
   static bool isSafeForNoCSROpt(const Function *F) {
@@ -356,6 +363,17 @@ public:
     llvm_unreachable("Target didn't implement a ShrinkWrapInfo subclass!");
     return nullptr;
   }
+
+  // FIXME: ShrinkWrap2: Try to keep stack shrink-wrapping internal into the
+  // target.
+  virtual SmallVector<MachineBasicBlock *, 4>
+  getPrologues(MachineFunction &MF) const {
+    return {};
+  };
+  virtual SmallVector<MachineBasicBlock *, 4>
+  getEpilogues(MachineFunction &MF) const {
+    return {};
+  };
 };
 
 } // End llvm namespace

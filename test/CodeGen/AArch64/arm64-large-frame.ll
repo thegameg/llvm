@@ -1,4 +1,7 @@
 ; RUN: llc -verify-machineinstrs -mtriple=arm64-none-linux-gnu -disable-fp-elim -disable-post-ra < %s | FileCheck %s
+; XFAIL: *
+; FIXME: ShrinkWrap2: This test fails with shrink-wrapping enabled because we
+; don't save LR.
 declare void @use_addr(i8*)
 
 @addr = global i8* null

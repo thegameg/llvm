@@ -1,0 +1,44 @@
+# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -run-pass=prologepilog %s -debug-only=shrink-wrap2 -o - 2>&1 | FileCheck %s
+# REQUIRES: asserts
+--- |
+  define void @f0() nounwind { ret void }
+...
+---
+name:            f0
+tracksRegLiveness: true
+liveins:
+  - { reg: '%x1' }
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.3
+    liveins: %x1
+
+    %x19 = COPY %x1
+    CBNZW %wzr, %bb.3
+    B %bb.1
+
+  bb.1:
+    successors: %bb.2
+    liveins: %x19
+
+
+  bb.2:
+    successors: %bb.2, %bb.3
+    liveins: %x19
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead %sp, implicit %sp
+    %x1 = COPY %x19
+    BL @f0, csr_aarch64_aapcs, implicit-def dead %lr, implicit %sp, implicit undef %x0, implicit %x1, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+    dead %xzr = SUBSXri undef %x8, 8, 0, implicit-def %nzcv
+    Bcc 12, %bb.2, implicit killed %nzcv
+    B %bb.3
+
+  bb.3:
+    RET_ReallyLR
+
+...
+# Check that we're not trying to produce compact unwinding when FP and LR are split.
+
+# CHECK-LABEL: f0
+# CHECK-NOT: Pushing invalid registers for frame!

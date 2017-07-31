@@ -1,0 +1,38 @@
+# RUN: llc -mtriple=arm64-apple-ios -debug-only=shrink-wrap2 -run-pass=prologepilog %s -o /dev/null 2>&1 | FileCheck %s
+# REQUIRE: asserts
+
+--- |
+  define void @f0() nounwind { ret void }
+  declare void @f1() nounwind
+  declare void @f2() nounwind
+...
+---
+name:            f0
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+
+    CBNZW %wzr, %bb.2
+    B %bb.1
+
+  bb.1:
+    successors: %bb.2
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead %sp, implicit %sp
+    BL @f1, csr_aarch64_aapcs, implicit-def dead %lr, implicit %sp, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+
+  bb.2:
+    TCRETURNdi @f2, 0, csr_aarch64_aapcs, implicit %sp
+
+...
+
+# This test makes sure that we don't convert callee save save / restores from
+# store / load to pre / post increment load store.
+
+# CHECK-LABEL: f0
+# CHECK-NOT: This is not a register operand
+# CHECK: BB#1 uses : %LR
+# CHECK: **** Shrink-wrapping results
+# CHECK-NEXT: BB#1: Saves: %LR, | Restores: %LR,

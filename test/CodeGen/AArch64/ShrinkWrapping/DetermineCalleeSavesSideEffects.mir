@@ -1,0 +1,37 @@
+# RUN: llc -march=aarch64 -mcpu=cortex-a57 -aarch64-a57-fp-load-balancing-override=1 -aarch64-a57-fp-load-balancing-force-all -enable-misched=false -enable-post-misched=false -run-pass=prologepilog -debug-only=shrink-wrap2 %s -o /dev/null 2>&1 | FileCheck %s
+# REQUIRE: asserts
+--- |
+  declare void @f1() #0
+  define void @f0() #1 { ret void }
+
+  attributes #0 = { nounwind "target-cpu"="cortex-a57" }
+  attributes #1 = { nounwind "no-frame-pointer-elim-non-leaf" "target-cpu"="cortex-a57" }
+
+...
+---
+name:            f0
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+
+    CBNZW %wzr, %bb.2
+    B %bb.1
+
+  bb.1:
+    successors: %bb.2
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead %sp, implicit %sp
+    BL @f1, csr_aarch64_aapcs, implicit-def dead %lr, implicit %sp, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+
+  bb.2:
+    RET_ReallyLR
+...
+# Check that while we look for CSRs, we set the appropriate internal state of AArch64MachineFunction.
+
+# CHECK-LABEL: f0
+# CHECK-NOT: unexpected function without stacke frame but with FP
+# CHECK: BB#1 uses : %LR
+# CHECK: **** Shrink-wrapping results
+# CHECK-NEXT: BB#1: Saves: %LR, | Restores: %LR,

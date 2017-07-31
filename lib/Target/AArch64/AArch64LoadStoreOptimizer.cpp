@@ -637,6 +637,8 @@ MachineBasicBlock::iterator
 AArch64LoadStoreOpt::mergePairedInsns(MachineBasicBlock::iterator I,
                                       MachineBasicBlock::iterator Paired,
                                       const LdStPairFlags &Flags) {
+  // FIXME: ShrinkWrap2: Add optimization remarks to see when we miss forming a
+  // pair.
   MachineBasicBlock::iterator NextI = I;
   ++NextI;
   // If NextI is the second of the two instructions to be merged, we need

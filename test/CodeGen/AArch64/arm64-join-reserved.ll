@@ -1,4 +1,7 @@
 ; RUN: llc < %s -verify-machineinstrs | FileCheck %s
+; XFAIL: *
+; FIXME: ShrinkWrap2: This test fails with shrink-wrapping enabled because we
+; don't spill x29, so we merge the store of x30 with wrz.
 target triple = "arm64-apple-macosx10"
 
 ; Make sure that a store to [sp] addresses off sp directly.

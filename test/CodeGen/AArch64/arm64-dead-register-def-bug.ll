@@ -1,3 +1,4 @@
+; FIXME: ShrinkWrap2: .ll -> .mir when stack protector stuff is fixed.
 ; RUN: llc -mtriple="arm64-apple-ios" < %s | FileCheck %s
 ;
 ; Check that the dead register definition pass is considering implicit defs.

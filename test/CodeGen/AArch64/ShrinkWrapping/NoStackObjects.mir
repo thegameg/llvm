@@ -1,0 +1,53 @@
+# RUN: llc -filetype obj -mtriple=arm64-apple-ios10.3.0 -run-pass=prologepilog -debug-only=shrink-wrap2 %s -o /dev/null 2>&1 | FileCheck %s
+# REQUIRES: asserts
+--- |
+  define void @f0() nounwind { entry: ret void }
+  declare void @f1()
+...
+---
+name:            f0
+tracksRegLiveness: true
+liveins:
+  - { reg: '%d0' }
+  - { reg: '%d1' }
+body:             |
+  bb.0:
+    successors: %bb.2, %bb.1
+    liveins: %d0, %d1
+
+    dead %wzr = SUBSWri undef %w8, 0, 0, implicit-def %nzcv
+    Bcc 12, %bb.2, implicit killed %nzcv
+    B %bb.1
+
+  bb.1:
+    successors: %bb.4, %bb.3
+    liveins: %d0, %d1
+
+    CBNZW %wzr, %bb.4
+    B %bb.3
+
+  bb.2:
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead %sp, implicit %sp
+    %x3 = COPY %sp
+    BL @f1, csr_aarch64_aapcs_thisreturn, implicit-def dead %lr, implicit %sp, implicit undef %x0, implicit undef %x1, implicit undef %x2, implicit killed %x3, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+
+  bb.3:
+    successors: %bb.4
+    liveins: %d0, %d1
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead %sp, implicit %sp
+    %x3 = COPY %sp
+    %w4 = MOVi32imm 70
+    %w5 = COPY %wzr
+    BL @f1, csr_aarch64_aapcs_thisreturn, implicit-def dead %lr, implicit %sp, implicit undef %x0, implicit %d0, implicit %d1, implicit undef %x1, implicit undef %x2, implicit killed %x3, implicit undef %d2, implicit killed %w4, implicit killed %w5, implicit-def %sp
+    ADJCALLSTACKUP 0, 0, implicit-def dead %sp, implicit %sp
+
+  bb.4:
+    %w0 = MOVi32imm 1
+    RET_ReallyLR implicit killed %w0
+...
+# Check that we don't use the stack objects in the AArch64 backend.
+
+# CHECK-LABEL: f0
+# CHECK-NOT: Getting frame offset for a dead object?

@@ -23,6 +23,21 @@
 
 namespace llvm {
 
+class MachineOperand;
+
+/// This contains register pairs computed for callee-save saves / restores.
+struct RegPairInfo {
+  unsigned Reg1 = AArch64::NoRegister;
+  unsigned Reg2 = AArch64::NoRegister;
+  int FrameIdx;
+  int Offset;
+  bool IsGPR;
+
+  RegPairInfo() = default;
+
+  bool isPaired() const { return Reg2 != llvm::AArch64::NoRegister; }
+};
+
 /// AArch64FunctionInfo - This class is derived from MachineFunctionInfo and
 /// contains private AArch64-specific information for each MachineFunction.
 class AArch64FunctionInfo final : public MachineFunctionInfo {
@@ -44,6 +59,7 @@ class AArch64FunctionInfo final : public MachineFunctionInfo {
 
   /// HasStackFrame - True if this function has a stack frame. Set by
   /// determineCalleeSaves().
+  // FIXME: ShrinkWrap2: This should not be set in determineCalleeSaves...
   bool HasStackFrame = false;
 
   /// \brief Amount of stack frame size, not including callee-saved registers.
@@ -88,6 +104,17 @@ class AArch64FunctionInfo final : public MachineFunctionInfo {
   /// other stack allocations.
   bool CalleeSaveStackHasFreeSpace = false;
 
+  // FIXME: ShrinkWrap2: This should be replaced with MFI.Objects.
+  /// Register pairs computed for CSR save / restore.
+  SmallVector<RegPairInfo, 8> RegPairs;
+
+  // FIXME: ShrinkWrap2: The offsets that probably need to be fixed are
+  // collected during spillCalleeSavedRegisters but need to be fixed during
+  // emitPrologue.
+  /// Machine operands representing SP-related offsets to CSRs, that need to be
+  /// fixed if local stack allocation happens afterwards.
+  SmallVector<MachineOperand*, 8> CSROffsetsToFix;
+
 public:
   AArch64FunctionInfo() = default;
 
@@ -114,6 +141,11 @@ public:
   }
   void setCalleeSaveStackHasFreeSpace(bool s) {
     CalleeSaveStackHasFreeSpace = s;
+  }
+
+  SmallVectorImpl<RegPairInfo> &getRegPairs() { return RegPairs; }
+  SmallVectorImpl<MachineOperand *> &getCSROffsetsToFix() {
+    return CSROffsetsToFix;
   }
 
   bool isSplitCSR() const { return IsSplitCSR; }

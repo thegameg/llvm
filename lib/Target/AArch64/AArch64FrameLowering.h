@@ -36,6 +36,12 @@ public:
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
   void emitEpilogue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
 
+  // FIXME: ShrinkWrap2: Delay the computation of NumRegsSpilled.
+  bool
+  assignCalleeSavedSpillSlots(MachineFunction &MF,
+                              const TargetRegisterInfo *TRI,
+                              std::vector<CalleeSavedInfo> &CSI) const override;
+
   bool canUseAsPrologue(const MachineBasicBlock &MBB) const override;
 
   int getFrameIndexReference(const MachineFunction &MF, int FI,
@@ -68,6 +74,16 @@ public:
   }
 
   bool enableStackSlotScavenging(const MachineFunction &MF) const override;
+
+  // FIXME: ShrinkWrap2: We need this to call computeCalleeSaveRegisterParis
+  // before we spill them.
+  void
+  processValidCalleeSavedInfo(MachineFunction &MF,
+                              const TargetRegisterInfo *TRI,
+                              std::vector<CalleeSavedInfo> &CSI) const override;
+
+  std::unique_ptr<ShrinkWrapInfo>
+  createCSRShrinkWrapInfo(const MachineFunction &MF) const override;
 
 private:
   bool shouldCombineCSRLocalStackBump(MachineFunction &MF,

@@ -127,6 +127,8 @@ add_llvm_library(LLVMCodeGen
   ScoreboardHazardRecognizer.cpp
   ShadowStackGCLowering.cpp
   ShrinkWrap.cpp
+# FIXME: ShrinkWrap2: Merge.
+  ShrinkWrapper.cpp
   SjLjEHPrepare.cpp
   SlotIndexes.cpp
   SpillPlacement.cpp

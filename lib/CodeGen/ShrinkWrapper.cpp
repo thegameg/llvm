@@ -66,11 +66,14 @@ void ShrinkWrapInfo::determineCSRUses() {
                         bool isTerminator = false) {
     unsigned MBBNum = MBB.getNumber();
     MarkAsUsedBase(RegIdx, MBBNum);
+    MarkAsUsedBase(RegIdx ^ 1, MBBNum);
     // If it's a terminator, mark the successors as used as well,
     // since we can't save after a terminator (i.e. cbz w23, #10).
     if (isTerminator)
-      for (MachineBasicBlock *Succ : MBB.successors())
+      for (MachineBasicBlock *Succ : MBB.successors()) {
         MarkAsUsedBase(RegIdx, Succ->getNumber());
+        MarkAsUsedBase(RegIdx ^ 1, Succ->getNumber());
+      }
   };
 
   // FIXME: ShrinkWrap2: Naked functions.

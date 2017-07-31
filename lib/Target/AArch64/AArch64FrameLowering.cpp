@@ -167,10 +167,31 @@ public:
             MF.getSubtarget().getRegisterInfo());
     const MCPhysReg *CSRegs = RegInfo->getCalleeSavedRegs(&MF);
     // Count the number of CSRs.
-    for (unsigned i = 0; CSRegs[i]; ++i)
+    unsigned FPIdx = 0;
+    unsigned LRIdx = 0;
+    for (unsigned i = 0; CSRegs[i]; ++i) {
       ++NumCSRs;
+      if (CSRegs[i] == AArch64::FP)
+        FPIdx = i;
+      if (CSRegs[i] == AArch64::LR)
+        LRIdx = i;
+    }
 
     determineCSRUses();
+
+    bool ShouldFP = false;
+    bool ShouldLR = false;
+    for (BitVector &BV : Uses)
+      if (!BV.empty()) {
+        if (BV.test(FPIdx)) {
+          BV.reset(FPIdx);
+          ShouldFP = true;
+        }
+        if (BV.test(LRIdx)) {
+          BV.reset(LRIdx);
+          ShouldLR = true;
+        }
+      }
 
     // FIXME: ShrinkWrap2: This is a duplicate of determineCalleeSaves. We
     // should split this into multiple functions, and remove all the side
@@ -193,13 +214,19 @@ public:
 
     const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
     // The frame record needs to be created by saving the appropriate registers
+    if (ShouldFP) {
+      EntryCSRs.set(FPIdx);
+      SavedRegs.set(FPIdx);
+    }
+    if (ShouldLR) {
+      EntryCSRs.set(LRIdx);
+      SavedRegs.set(LRIdx);
+    }
     if (TFI->hasFP(MF)) {
-      EntryCSRs.set(AArch64::FP);
-      SavedRegs.set(AArch64::FP);
-#if 0 // FIXME: ShrinkWrap2: Should we let LR be shrink-wrapped?
-      EntryCSRs.set(AArch64::LR);
-      SavedRegs.set(AArch64::LR);
-#endif
+      EntryCSRs.set(FPIdx);
+      SavedRegs.set(FPIdx);
+      EntryCSRs.set(LRIdx);
+      SavedRegs.set(LRIdx);
     }
 
     unsigned BasePointerReg = AArch64::NoRegister;
@@ -216,6 +243,8 @@ public:
       if (Reg == BasePointerReg) {
         EntryCSRs.set(RegIdx);
         SavedRegs.set(RegIdx);
+        EntryCSRs.set(RegIdx ^ 1);
+        SavedRegs.set(RegIdx ^ 1);
       }
 
       bool RegUsed = SavedRegs.test(RegIdx);
@@ -285,10 +314,10 @@ public:
         // MachO's compact unwind format relies on all registers being stored in
         // pairs, so if we need to spill one extra for BigStack, then we need to
         // store the pair.
-        if (produceCompactUnwindFrame(MF)) {
+        //if (produceCompactUnwindFrame(MF)) {
           EntryCSRs.set(UnspilledCSGPRPairedIdx);
           SavedRegs.set(UnspilledCSGPRPairedIdx);
-        }
+        //}
         ExtraCSSpill = UnspilledCSGPRPaired;
         NumRegsSpilled = SavedRegs.count();
       }
@@ -1743,11 +1772,13 @@ void AArch64FrameLowering::processSaveRestorePoints(
   auto AddAllToBlock = [&](MachineBasicBlock *MBB, CalleeSavedMap &Map) {
     BitVector &EntryCSRs = AFI->getEntryCSRs();
     for (unsigned CSRIdx : EntryCSRs.set_bits()) {
-      unsigned Reg = CSRegs[CSRIdx];
-      if (none_of(Map[MBB], [&](const CalleeSavedInfo &CSI) {
-            return CSI.getReg() == Reg;
-          })) {
-        Map[MBB].emplace(Map[MBB].begin(), Reg);
+      for (unsigned Idx : {CSRIdx, CSRIdx ^ 1}) {
+        unsigned Reg = CSRegs[Idx];
+        if (none_of(Map[MBB], [&](const CalleeSavedInfo &CSI) {
+              return CSI.getReg() == Reg;
+            })) {
+          Map[MBB].emplace(Map[MBB].begin(), Reg);
+        }
       }
     }
   };
@@ -1755,6 +1786,8 @@ void AArch64FrameLowering::processSaveRestorePoints(
   if (!Prologues.count() || !Epilogues.count()) {
     Prologues.reset();
     Epilogues.reset();
+    Saves.clear();
+    Restores.clear();
 
     // And add the frame pointer to be saved / restored in the entry / return
     // blocks.

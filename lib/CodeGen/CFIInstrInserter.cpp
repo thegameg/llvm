@@ -20,6 +20,8 @@
 /// a non-linear layout of blocks in a function.
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
@@ -60,10 +62,39 @@ public:
 #endif
     bool insertedCFI = insertCFIInstrs(MF);
     MBBVector.clear();
+    AllCSR.clear();
     return insertedCFI;
   }
 
 private:
+  struct CSRState {
+    /// A register can be saved in different locations:
+    enum {
+      OnStack,         /// Restored using an offset from CFA.
+      InRegister,      /// Restored by reading the value from another register.
+      Undefined,       /// Can't be restored anymore.
+      InPreviousFrame, /// No restoration needed.
+    } Saved = Undefined;
+
+    union {
+      /// Offset from CFA.
+      int Offset;
+      /// Register where it's saved.
+      unsigned Register;
+    };
+
+    bool operator==(const CSRState &Other) const {
+      if (Saved != Other.Saved)
+        return false;
+      if (Saved == OnStack && Offset != Other.Offset)
+        return false;
+      if (Saved == InRegister && Register != Other.Register)
+        return false;
+      return true;
+    }
+    bool operator!=(const CSRState &Other) const { return !operator==(Other); }
+  };
+
   struct MBBCFIInfo {
     /// Value of cfa offset valid at basic block entry.
     int IncomingCFAOffset = -1;
@@ -73,12 +104,22 @@ private:
     unsigned IncomingCFARegister = 0;
     /// Value of cfa register valid at basic block exit.
     unsigned OutgoingCFARegister = 0;
+    /// State of all the CSRs at basic block entry.
+    DenseMap<MCPhysReg, CSRState> IncomingCSRState;
+    /// State of all the CSRs at basic block exit.
+    DenseMap<MCPhysReg, CSRState> OutgoingCSRState;
     /// If CFI values for this block have already been set or not.
     bool Processed = false;
   };
 
   /// Contains CFI values valid at entry and exit of basic blocks.
   SmallVector<MBBCFIInfo, 4> MBBVector;
+
+  /// All callee saved registers described by CFI directives.
+  SetVector<MCPhysReg> AllCSR;
+
+  /// Scan for all the CSRs described by CFI directives.
+  void getInitialCSR(const MachineFunction &MF);
 
   /// Calculate CFI values valid at entry and exit for all basic blocks in a
   /// function.
@@ -125,6 +166,32 @@ INITIALIZE_PASS(CFIInstrInserter, "cfi-instr-inserter",
                 false)
 FunctionPass *llvm::createCFIInstrInserter() { return new CFIInstrInserter(); }
 
+void CFIInstrInserter::getInitialCSR(const MachineFunction &MF) {
+  for (const MachineBasicBlock &MBB : MF) {
+    const std::vector<MCCFIInstruction> &Instrs =
+        MBB.getParent()->getFrameInstructions();
+    for (const MachineInstr &MI : MBB) {
+      if (MI.isCFIInstruction()) {
+        unsigned CFIIndex = MI.getOperand(0).getCFIIndex();
+        const MCCFIInstruction &CFI = Instrs[CFIIndex];
+        switch (CFI.getOperation()) {
+        case MCCFIInstruction::OpSameValue:
+        case MCCFIInstruction::OpOffset:
+        case MCCFIInstruction::OpRelOffset:
+        case MCCFIInstruction::OpRestore:
+        case MCCFIInstruction::OpUndefined:
+        case MCCFIInstruction::OpRegister: {
+          AllCSR.insert(CFI.getRegister());
+          break;
+        }
+        default:
+          break;
+        }
+      }
+    }
+  }
+}
+
 void CFIInstrInserter::calculateCFIInfo(const MachineFunction &MF) {
   // Initial CFA offset value i.e. the one valid at the beginning of the
   // function.
@@ -135,6 +202,9 @@ void CFIInstrInserter::calculateCFIInfo(const MachineFunction &MF) {
   unsigned InitialRegister =
       MF.getSubtarget().getFrameLowering()->getInitialCFARegister(MF);
 
+  // Initial CSR that are described in the function.
+  getInitialCSR(MF);
+
   // Initialize MBBMap.
   for (const MachineBasicBlock &MBB : MF) {
     MBBCFIInfo &MBBInfo = MBBVector[MBB.getNumber()];
@@ -142,6 +212,11 @@ void CFIInstrInserter::calculateCFIInfo(const MachineFunction &MF) {
     MBBInfo.OutgoingCFAOffset = InitialOffset;
     MBBInfo.IncomingCFARegister = InitialRegister;
     MBBInfo.OutgoingCFARegister = InitialRegister;
+    for (auto *Map : {&MBBInfo.OutgoingCSRState, &MBBInfo.IncomingCSRState}) {
+      Map->reserve(AllCSR.size());
+      for (MCPhysReg Reg : AllCSR)
+        (*Map)[Reg].Saved = CSRState::Undefined;
+    }
   }
 
   // Set in/out cfi info for all blocks in the function. This traversal is based
@@ -165,6 +240,8 @@ void CFIInstrInserter::calculateOutgoingCFIInfo(const MachineBasicBlock &MBB) {
   const std::vector<MCCFIInstruction> &Instrs =
       MBB.getParent()->getFrameInstructions();
 
+  MBBInfo.OutgoingCSRState = MBBInfo.IncomingCSRState;
+
   // Determine cfa offset and register set by the block.
   for (const MachineInstr &MI : MBB) {
     if (MI.isCFIInstruction()) {
@@ -186,6 +263,39 @@ void CFIInstrInserter::calculateOutgoingCFIInfo(const MachineBasicBlock &MBB) {
       case MCCFIInstruction::OpDefCfa: {
         SetRegister = CFI.getRegister();
         SetOffset = CFI.getOffset();
+        break;
+      }
+      case MCCFIInstruction::OpSameValue: {
+        MBBInfo.OutgoingCSRState[CFI.getRegister()].Saved =
+            CSRState::InPreviousFrame;
+        break;
+      }
+      case MCCFIInstruction::OpOffset: {
+        CSRState &Reg = MBBInfo.OutgoingCSRState[CFI.getRegister()];
+        Reg.Saved = CSRState::OnStack;
+        Reg.Offset = CFI.getOffset();
+        break;
+      }
+      case MCCFIInstruction::OpUndefined: {
+        MBBInfo.OutgoingCSRState[CFI.getRegister()].Saved =
+            CSRState::Undefined;
+        break;
+      }
+      case MCCFIInstruction::OpRegister: {
+        CSRState &Reg = MBBInfo.OutgoingCSRState[CFI.getRegister()];
+        Reg.Saved = CSRState::InRegister;
+        Reg.Register = CFI.getRegister2();
+        break;
+      }
+      case MCCFIInstruction::OpRelOffset: {
+        CSRState &Reg = MBBInfo.OutgoingCSRState[CFI.getRegister()];
+        Reg.Saved = CSRState::OnStack;
+        Reg.Offset = CFI.getOffset() + SetRegister;
+        break;
+      }
+      case MCCFIInstruction::OpRestore: {
+        MBBInfo.OutgoingCSRState[CFI.getRegister()].Saved =
+            CSRState::Undefined;
         break;
       }
       default: {
@@ -212,6 +322,8 @@ void CFIInstrInserter::updateSuccCFIInfo(const MachineBasicBlock &MBB) {
       continue;
     SuccInfo.IncomingCFAOffset = MBBInfo.OutgoingCFAOffset;
     SuccInfo.IncomingCFARegister = MBBInfo.OutgoingCFARegister;
+    SuccInfo.IncomingCSRState = MBBInfo.OutgoingCSRState;
+
     calculateOutgoingCFIInfo(*Succ);
     updateSuccCFIInfo(*Succ);
   }
@@ -280,7 +392,38 @@ bool CFIInstrInserter::insertCFACFIInstrs(const MBBCFIInfo &MBBInfo,
 bool CFIInstrInserter::insertCSRCFIInstrs(const MBBCFIInfo &MBBInfo,
                                           const MBBCFIInfo &PrevMBBInfo,
                                           MachineBasicBlock &MBB,
-                                          MachineBasicBlock::iterator &MBBI) {}
+                                          MachineBasicBlock::iterator &MBBI) {
+  MachineFunction &MF = *MBB.getParent();
+  DebugLoc DL = MBB.findDebugLoc(MBBI);
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+  bool InsertedCFIInstr = false;
+
+  for (MCPhysReg Reg : AllCSR) {
+    const CSRState &Prev = PrevMBBInfo.OutgoingCSRState.find(Reg)->second;
+    const CSRState &Curr = MBBInfo.IncomingCSRState.find(Reg)->second;
+    if (Prev == Curr)
+      continue;
+    MCCFIInstruction MCCFI = [&] {
+      switch (Curr.Saved) {
+      case CSRState::Undefined:
+        return MCCFIInstruction::createUndefined(nullptr, Reg);
+      case CSRState::InPreviousFrame:
+        return MCCFIInstruction::createSameValue(nullptr, Reg);
+      case CSRState::OnStack:
+        return MCCFIInstruction::createOffset(nullptr, Reg, Curr.Offset);
+      case CSRState::InRegister:
+        return MCCFIInstruction::createRegister(nullptr, Reg, Curr.Register);
+      }
+    }();
+
+    unsigned CFIIndex = MF.addFrameInst(MCCFI);
+    BuildMI(MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
+        .addCFIIndex(CFIIndex);
+    InsertedCFIInstr = true;
+  }
+
+  return InsertedCFIInstr;
+}
 
 void CFIInstrInserter::report(const char *msg, const MachineBasicBlock &MBB) {
   errs() << '\n';
@@ -293,6 +436,13 @@ void CFIInstrInserter::report(const char *msg, const MachineBasicBlock &MBB) {
 
 unsigned CFIInstrInserter::verify(const MachineFunction &MF) {
   unsigned ErrorNum = 0;
+  auto MapsAreDifferent = [&](const DenseMap<MCPhysReg, CSRState> &A,
+                              const DenseMap<MCPhysReg, CSRState> &B) {
+    for (MCPhysReg Reg : AllCSR)
+      if (A.lookup(Reg) != B.lookup(Reg))
+        return true;
+    return false;
+  };
   for (const MachineBasicBlock &CurrMBB : MF) {
     const MBBCFIInfo &CurrMBBInfo = MBBVector[CurrMBB.getNumber()];
     for (const MachineBasicBlock *Pred : CurrMBB.predecessors()) {
@@ -321,6 +471,14 @@ unsigned CFIInstrInserter::verify(const MachineFunction &MF) {
                << ").\n";
         ErrorNum++;
       }
+
+      if (MapsAreDifferent(PredMBBInfo.OutgoingCSRState,
+                           CurrMBBInfo.IncomingCSRState)) {
+        report("The outgoing CSR info of a predecessor is inconsistent.",
+               CurrMBB);
+        errs() << "Predecessor BB#" << Pred->getNumber() << ".\n";
+        ErrorNum++;
+      }
     }
 
     for (const MachineBasicBlock *Succ : CurrMBB.successors()) {
@@ -346,6 +504,14 @@ unsigned CFIInstrInserter::verify(const MachineFunction &MF) {
                << "), while BB#" << CurrMBB.getNumber()
                << " has outgoing register (" << CurrMBBInfo.OutgoingCFARegister
                << ").\n";
+        ErrorNum++;
+      }
+
+      if (MapsAreDifferent(SuccMBBInfo.IncomingCSRState,
+                           CurrMBBInfo.OutgoingCSRState)) {
+        report("The incoming CSR info of a successor is inconsistent.",
+               CurrMBB);
+        errs() << "Successor BB#" << Succ->getNumber() << ".\n";
         ErrorNum++;
       }
     }

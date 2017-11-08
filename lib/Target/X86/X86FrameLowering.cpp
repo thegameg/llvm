@@ -1594,7 +1594,12 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
           TRI->getDwarfRegNum(Is64Bit ? X86::RSP : X86::ESP, true);
       BuildCFI(MBB, MBBI, DL, MCCFIInstruction::createDefCfa(
                                   nullptr, DwarfStackPtr, -SlotSize));
-      --MBBI;
+      MBBI--;
+
+      BuildCFI(MBB, MBBI, DL,
+               MCCFIInstruction::createRestore(
+                   nullptr, TRI->getDwarfRegNum(MachineFramePtr, true)));
+      MBBI--;
     }
   }
 
@@ -1689,6 +1694,10 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
         Offset += SlotSize;
         BuildCFI(MBB, MBBI, DL,
                  MCCFIInstruction::createDefCfaOffset(nullptr, Offset));
+        BuildCFI(MBB, MBBI, DL,
+                 MCCFIInstruction::createRestore(
+                     nullptr,
+                     TRI->getDwarfRegNum(PI->getOperand(0).getReg(), true)));
       }
     }
   }

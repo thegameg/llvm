@@ -45,7 +45,10 @@ define void @test1() {
 ; X32-NEXT:    xorl %edi, %edi
 ; X32-NEXT:    maskmovq %mm1, %mm0
 ; X32-NEXT:    addl $16, %esp
+; X32-NEXT:    .cfi_def_cfa_offset 8
 ; X32-NEXT:    popl %edi
+; X32-NEXT:    .cfi_def_cfa_offset 4
+; X32-NEXT:    .cfi_restore %edi
 ; X32-NEXT:    retl
 ;
 ; X64-LABEL: test1:

@@ -699,13 +699,13 @@ define <16 x i8> @test8(<16 x i32>%a, <16 x i32>%b, i32 %a1, i32 %b1) {
 ; AVX512BW-NEXT:    jg LBB17_1
 ; AVX512BW-NEXT:  ## BB#2:
 ; AVX512BW-NEXT:    vpcmpltud %zmm2, %zmm1, %k0
-; AVX512BW-NEXT:    vpmovm2b	%k0, %zmm0
+; AVX512BW-NEXT:    vpmovm2b %k0, %zmm0
 ; AVX512BW-NEXT:    ## kill: %XMM0<def> %XMM0<kill> %ZMM0<kill>
 ; AVX512BW-NEXT:    vzeroupper
 ; AVX512BW-NEXT:    retq
 ; AVX512BW-NEXT:  LBB17_1:
-; AVX512BW-NEXT:    vpcmpgtd	%zmm2, %zmm0, %k0
-; AVX512BW-NEXT:    vpmovm2b	%k0, %zmm0
+; AVX512BW-NEXT:    vpcmpgtd %zmm2, %zmm0, %k0
+; AVX512BW-NEXT:    vpmovm2b %k0, %zmm0
 ; AVX512BW-NEXT:    ## kill: %XMM0<def> %XMM0<kill> %ZMM0<kill>
 ; AVX512BW-NEXT:    vzeroupper
 ; AVX512BW-NEXT:    retq
@@ -967,6 +967,10 @@ define <64 x i8> @test16(i64 %x) {
 ; KNL-NEXT:    vpcmpgtb %ymm0, %ymm2, %ymm0
 ; KNL-NEXT:    movq %rbp, %rsp
 ; KNL-NEXT:    popq %rbp
+; KNL-NEXT:    .cfi_def_cfa_offset 0
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_def_cfa %rsp, 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test16:
@@ -1034,6 +1038,10 @@ define <64 x i8> @test16(i64 %x) {
 ; AVX512DQ-NEXT:    vpcmpgtb %ymm0, %ymm2, %ymm0
 ; AVX512DQ-NEXT:    movq %rbp, %rsp
 ; AVX512DQ-NEXT:    popq %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 0
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa %rsp, 8
 ; AVX512DQ-NEXT:    retq
   %a = bitcast i64 %x to <64 x i1>
   %b = insertelement <64 x i1>%a, i1 true, i32 5
@@ -1079,6 +1087,10 @@ define <64 x i8> @test17(i64 %x, i32 %y, i32 %z) {
 ; KNL-NEXT:    vpcmpgtb %ymm0, %ymm2, %ymm0
 ; KNL-NEXT:    movq %rbp, %rsp
 ; KNL-NEXT:    popq %rbp
+; KNL-NEXT:    .cfi_def_cfa_offset 0
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_def_cfa %rsp, 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test17:
@@ -1150,6 +1162,10 @@ define <64 x i8> @test17(i64 %x, i32 %y, i32 %z) {
 ; AVX512DQ-NEXT:    vpcmpgtb %ymm0, %ymm2, %ymm0
 ; AVX512DQ-NEXT:    movq %rbp, %rsp
 ; AVX512DQ-NEXT:    popq %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 0
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa %rsp, 8
 ; AVX512DQ-NEXT:    retq
   %a = bitcast i64 %x to <64 x i1>
   %b = icmp sgt i32 %y, %z
@@ -2095,6 +2111,10 @@ define void @ktest_2(<32 x float> %in, float * %base) {
 ; KNL-NEXT:  LBB42_3: ## %End
 ; KNL-NEXT:    movq %rbp, %rsp
 ; KNL-NEXT:    popq %rbp
+; KNL-NEXT:    .cfi_def_cfa_offset 0
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_restore %rbp
+; KNL-NEXT:    .cfi_def_cfa %rsp, 8
 ; KNL-NEXT:    vzeroupper
 ; KNL-NEXT:    retq
 ;
@@ -2443,6 +2463,10 @@ define void @ktest_2(<32 x float> %in, float * %base) {
 ; AVX512DQ-NEXT:  LBB42_3: ## %End
 ; AVX512DQ-NEXT:    movq %rbp, %rsp
 ; AVX512DQ-NEXT:    popq %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 0
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_restore %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa %rsp, 8
 ; AVX512DQ-NEXT:    vzeroupper
 ; AVX512DQ-NEXT:    retq
   %addr1 = getelementptr float, float * %base, i64 0
@@ -3221,11 +3245,23 @@ define void @store_64i1(<64 x i1>* %a, <64 x i1> %v) {
 ; KNL-NEXT:    vptestmd %zmm0, %zmm0, %k0
 ; KNL-NEXT:    kmovw %k0, (%rdi)
 ; KNL-NEXT:    popq %rbx
+; KNL-NEXT:    .cfi_def_cfa_offset 48
+; KNL-NEXT:    .cfi_restore %rbx
 ; KNL-NEXT:    popq %r12
+; KNL-NEXT:    .cfi_def_cfa_offset 40
+; KNL-NEXT:    .cfi_restore %r12
 ; KNL-NEXT:    popq %r13
+; KNL-NEXT:    .cfi_def_cfa_offset 32
+; KNL-NEXT:    .cfi_restore %r13
 ; KNL-NEXT:    popq %r14
+; KNL-NEXT:    .cfi_def_cfa_offset 24
+; KNL-NEXT:    .cfi_restore %r14
 ; KNL-NEXT:    popq %r15
+; KNL-NEXT:    .cfi_def_cfa_offset 16
+; KNL-NEXT:    .cfi_restore %r15
 ; KNL-NEXT:    popq %rbp
+; KNL-NEXT:    .cfi_def_cfa_offset 8
+; KNL-NEXT:    .cfi_restore %rbp
 ; KNL-NEXT:    vzeroupper
 ; KNL-NEXT:    retq
 ;
@@ -3546,11 +3582,23 @@ define void @store_64i1(<64 x i1>* %a, <64 x i1> %v) {
 ; AVX512DQ-NEXT:    vptestmd %zmm0, %zmm0, %k0
 ; AVX512DQ-NEXT:    kmovw %k0, (%rdi)
 ; AVX512DQ-NEXT:    popq %rbx
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 48
+; AVX512DQ-NEXT:    .cfi_restore %rbx
 ; AVX512DQ-NEXT:    popq %r12
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 40
+; AVX512DQ-NEXT:    .cfi_restore %r12
 ; AVX512DQ-NEXT:    popq %r13
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 32
+; AVX512DQ-NEXT:    .cfi_restore %r13
 ; AVX512DQ-NEXT:    popq %r14
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 24
+; AVX512DQ-NEXT:    .cfi_restore %r14
 ; AVX512DQ-NEXT:    popq %r15
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 16
+; AVX512DQ-NEXT:    .cfi_restore %r15
 ; AVX512DQ-NEXT:    popq %rbp
+; AVX512DQ-NEXT:    .cfi_def_cfa_offset 8
+; AVX512DQ-NEXT:    .cfi_restore %rbp
 ; AVX512DQ-NEXT:    vzeroupper
 ; AVX512DQ-NEXT:    retq
   store <64 x i1> %v, <64 x i1>* %a

@@ -18,6 +18,10 @@ define <16 x float> @fmafunc(<16 x float> %a, <16 x float> %b, <16 x float> %c) 
 ; CHECK-NEXT:    vfmaddps 40(%ebp), %ymm3, %ymm1, %ymm1
 ; CHECK-NEXT:    movl %ebp, %esp
 ; CHECK-NEXT:    popl %ebp
+; CHECK-NEXT:    .cfi_def_cfa_offset 0
+; CHECK-NEXT:    .cfi_restore %ebp
+; CHECK-NEXT:    .cfi_restore %ebp
+; CHECK-NEXT:    .cfi_def_cfa %esp, 4
 ; CHECK-NEXT:    retl
 ;
 ; CHECK-NOFMA-LABEL: fmafunc:
@@ -35,6 +39,10 @@ define <16 x float> @fmafunc(<16 x float> %a, <16 x float> %b, <16 x float> %c) 
 ; CHECK-NOFMA-NEXT:    vaddps 40(%ebp), %ymm1, %ymm1
 ; CHECK-NOFMA-NEXT:    movl %ebp, %esp
 ; CHECK-NOFMA-NEXT:    popl %ebp
+; CHECK-NOFMA-NEXT:    .cfi_def_cfa_offset 0
+; CHECK-NOFMA-NEXT:    .cfi_restore %ebp
+; CHECK-NOFMA-NEXT:    .cfi_restore %ebp
+; CHECK-NOFMA-NEXT:    .cfi_def_cfa %esp, 4
 ; CHECK-NOFMA-NEXT:    retl
 
 

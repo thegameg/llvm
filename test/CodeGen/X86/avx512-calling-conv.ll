@@ -130,6 +130,7 @@ define <8 x i32> @test5(<8 x i32>%a, <8 x i32>%b) {
 ; KNL-NEXT:    vpslld $31, %ymm0, %ymm0
 ; KNL-NEXT:    vpsrad $31, %ymm0, %ymm0
 ; KNL-NEXT:    popq %rax
+; KNL-NEXT:    .cfi_def_cfa_offset 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test5:
@@ -144,6 +145,7 @@ define <8 x i32> @test5(<8 x i32>%a, <8 x i32>%b) {
 ; SKX-NEXT:    vpslld $31, %ymm0, %ymm0
 ; SKX-NEXT:    vpsrad $31, %ymm0, %ymm0
 ; SKX-NEXT:    popq %rax
+; SKX-NEXT:    .cfi_def_cfa_offset 8
 ; SKX-NEXT:    retq
 ;
 ; KNL_X32-LABEL: test5:
@@ -158,6 +160,7 @@ define <8 x i32> @test5(<8 x i32>%a, <8 x i32>%b) {
 ; KNL_X32-NEXT:    vpslld $31, %ymm0, %ymm0
 ; KNL_X32-NEXT:    vpsrad $31, %ymm0, %ymm0
 ; KNL_X32-NEXT:    addl $12, %esp
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 4
 ; KNL_X32-NEXT:    retl
   %cmpRes = icmp sgt <8 x i32>%a, %b
   %resi = call <8 x i1> @func8xi1(<8 x i1> %cmpRes)
@@ -180,6 +183,7 @@ define <16 x i32> @test6(<16 x i32>%a, <16 x i32>%b) {
 ; KNL-NEXT:    vpslld $31, %zmm0, %zmm0
 ; KNL-NEXT:    vpsrad $31, %zmm0, %zmm0
 ; KNL-NEXT:    popq %rax
+; KNL-NEXT:    .cfi_def_cfa_offset 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test6:
@@ -194,6 +198,7 @@ define <16 x i32> @test6(<16 x i32>%a, <16 x i32>%b) {
 ; SKX-NEXT:    vpslld $31, %zmm0, %zmm0
 ; SKX-NEXT:    vpsrad $31, %zmm0, %zmm0
 ; SKX-NEXT:    popq %rax
+; SKX-NEXT:    .cfi_def_cfa_offset 8
 ; SKX-NEXT:    retq
 ;
 ; KNL_X32-LABEL: test6:
@@ -208,6 +213,7 @@ define <16 x i32> @test6(<16 x i32>%a, <16 x i32>%b) {
 ; KNL_X32-NEXT:    vpslld $31, %zmm0, %zmm0
 ; KNL_X32-NEXT:    vpsrad $31, %zmm0, %zmm0
 ; KNL_X32-NEXT:    addl $12, %esp
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 4
 ; KNL_X32-NEXT:    retl
   %cmpRes = icmp sgt <16 x i32>%a, %b
   %resi = call <16 x i1> @func16xi1(<16 x i1> %cmpRes)
@@ -227,6 +233,7 @@ define <4 x i32> @test7(<4 x i32>%a, <4 x i32>%b) {
 ; KNL-NEXT:    vpslld $31, %xmm0, %xmm0
 ; KNL-NEXT:    vpsrad $31, %xmm0, %xmm0
 ; KNL-NEXT:    popq %rax
+; KNL-NEXT:    .cfi_def_cfa_offset 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test7:
@@ -239,6 +246,7 @@ define <4 x i32> @test7(<4 x i32>%a, <4 x i32>%b) {
 ; SKX-NEXT:    vpslld $31, %xmm0, %xmm0
 ; SKX-NEXT:    vpsrad $31, %xmm0, %xmm0
 ; SKX-NEXT:    popq %rax
+; SKX-NEXT:    .cfi_def_cfa_offset 8
 ; SKX-NEXT:    retq
 ;
 ; KNL_X32-LABEL: test7:
@@ -250,6 +258,7 @@ define <4 x i32> @test7(<4 x i32>%a, <4 x i32>%b) {
 ; KNL_X32-NEXT:    vpslld $31, %xmm0, %xmm0
 ; KNL_X32-NEXT:    vpsrad $31, %xmm0, %xmm0
 ; KNL_X32-NEXT:    addl $12, %esp
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 4
 ; KNL_X32-NEXT:    retl
   %cmpRes = icmp sgt <4 x i32>%a, %b
   %resi = call <4 x i1> @func4xi1(<4 x i1> %cmpRes)
@@ -274,6 +283,7 @@ define <8 x i1> @test7a(<8 x i32>%a, <8 x i32>%b) {
 ; KNL-NEXT:    vpternlogq $255, %zmm0, %zmm0, %zmm0 {%k1} {z}
 ; KNL-NEXT:    vpmovqw %zmm0, %xmm0
 ; KNL-NEXT:    popq %rax
+; KNL-NEXT:    .cfi_def_cfa_offset 8
 ; KNL-NEXT:    retq
 ;
 ; SKX-LABEL: test7a:
@@ -291,6 +301,7 @@ define <8 x i1> @test7a(<8 x i32>%a, <8 x i32>%b) {
 ; SKX-NEXT:    kandb %k1, %k0, %k0
 ; SKX-NEXT:    vpmovm2w %k0, %xmm0
 ; SKX-NEXT:    popq %rax
+; SKX-NEXT:    .cfi_def_cfa_offset 8
 ; SKX-NEXT:    retq
 ;
 ; KNL_X32-LABEL: test7a:
@@ -309,6 +320,7 @@ define <8 x i1> @test7a(<8 x i32>%a, <8 x i32>%b) {
 ; KNL_X32-NEXT:    vpternlogq $255, %zmm0, %zmm0, %zmm0 {%k1} {z}
 ; KNL_X32-NEXT:    vpmovqw %zmm0, %xmm0
 ; KNL_X32-NEXT:    addl $12, %esp
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 4
 ; KNL_X32-NEXT:    retl
   %cmpRes = icmp sgt <8 x i32>%a, %b
   %resi = call <8 x i1> @func8xi1(<8 x i1> %cmpRes)
@@ -417,8 +429,14 @@ define i32 @test12(i32 %a1, i32 %a2, i32 %b1) {
 ; ALL_X64-NEXT:    testb $1, %bl
 ; ALL_X64-NEXT:    cmovel %ecx, %eax
 ; ALL_X64-NEXT:    popq %rbx
+; ALL_X64-NEXT:    .cfi_def_cfa_offset 24
+; ALL_X64-NEXT:    .cfi_restore %rbx
 ; ALL_X64-NEXT:    popq %r14
+; ALL_X64-NEXT:    .cfi_def_cfa_offset 16
+; ALL_X64-NEXT:    .cfi_restore %r14
 ; ALL_X64-NEXT:    popq %rbp
+; ALL_X64-NEXT:    .cfi_def_cfa_offset 8
+; ALL_X64-NEXT:    .cfi_restore %rbp
 ; ALL_X64-NEXT:    retq
 ;
 ; KNL_X32-LABEL: test12:
@@ -450,9 +468,16 @@ define i32 @test12(i32 %a1, i32 %a2, i32 %b1) {
 ; KNL_X32-NEXT:    testb $1, %bl
 ; KNL_X32-NEXT:    cmovel %ecx, %eax
 ; KNL_X32-NEXT:    addl $16, %esp
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 16
 ; KNL_X32-NEXT:    popl %esi
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 12
+; KNL_X32-NEXT:    .cfi_restore %esi
 ; KNL_X32-NEXT:    popl %edi
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 8
+; KNL_X32-NEXT:    .cfi_restore %edi
 ; KNL_X32-NEXT:    popl %ebx
+; KNL_X32-NEXT:    .cfi_def_cfa_offset 4
+; KNL_X32-NEXT:    .cfi_restore %ebx
 ; KNL_X32-NEXT:    retl
   %cond = call i1 @test11(i32 %a1, i32 %b1)
   %res = call i32 @test10(i32 %a1, i32 %a2, i1 %cond)

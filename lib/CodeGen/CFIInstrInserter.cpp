@@ -54,12 +54,10 @@ public:
 
     MBBVector.resize(MF.getNumBlockIDs());
     calculateCFIInfo(MF);
-#ifndef NDEBUG
     unsigned ErrorNum = verify(MF);
     if (ErrorNum)
       report_fatal_error("Found " + Twine(ErrorNum) +
                          " in/out CFI information errors.");
-#endif
     bool insertedCFI = insertCFIInstrs(MF);
     MBBVector.clear();
     AllCSR.clear();

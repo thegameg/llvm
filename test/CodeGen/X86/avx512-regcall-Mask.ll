@@ -215,12 +215,16 @@ define i64 @caller_argv64i1() #0 {
 ; LINUXOSX64-NEXT:    .cfi_def_cfa_offset 40
 ; LINUXOSX64-NEXT:    popq %r12
 ; LINUXOSX64-NEXT:    .cfi_def_cfa_offset 32
+; LINUXOSX64-NEXT:    .cfi_restore %r12
 ; LINUXOSX64-NEXT:    popq %r13
 ; LINUXOSX64-NEXT:    .cfi_def_cfa_offset 24
+; LINUXOSX64-NEXT:    .cfi_restore %r13
 ; LINUXOSX64-NEXT:    popq %r14
 ; LINUXOSX64-NEXT:    .cfi_def_cfa_offset 16
+; LINUXOSX64-NEXT:    .cfi_restore %r14
 ; LINUXOSX64-NEXT:    popq %r15
 ; LINUXOSX64-NEXT:    .cfi_def_cfa_offset 8
+; LINUXOSX64-NEXT:    .cfi_restore %r15
 ; LINUXOSX64-NEXT:    retq
 entry:
   %v0 = bitcast i64 4294967298 to <64 x i1>
@@ -407,6 +411,7 @@ define x86_regcallcc i32 @test_argv32i1(<32 x i1> %x0, <32 x i1> %x1, <32 x i1> 
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 16
 ; LINUXOSX64-NEXT:    popq %rsp
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 8
+; LINUXOSX64-NEXT:   .cfi_restore %rsp
 ; LINUXOSX64-NEXT:    vzeroupper
 ; LINUXOSX64-NEXT:    retq
 entry:
@@ -640,6 +645,7 @@ define x86_regcallcc i16 @test_argv16i1(<16 x i1> %x0, <16 x i1> %x1, <16 x i1> 
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 16
 ; LINUXOSX64-NEXT:    popq %rsp
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 8
+; LINUXOSX64-NEXT:    .cfi_restore %rsp
 ; LINUXOSX64-NEXT:    retq
   %res = call i16 @test_argv16i1helper(<16 x i1> %x0, <16 x i1> %x1, <16 x i1> %x2)
   ret i16 %res
@@ -877,6 +883,7 @@ define x86_regcallcc i8 @test_argv8i1(<8 x i1> %x0, <8 x i1> %x1, <8 x i1> %x2) 
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 16
 ; LINUXOSX64-NEXT:    popq %rsp
 ; LINUXOSX64-NEXT:   .cfi_def_cfa_offset 8
+; LINUXOSX64-NEXT:    .cfi_restore %rsp
 ; LINUXOSX64-NEXT:    retq
   %res = call i8 @test_argv8i1helper(<8 x i1> %x0, <8 x i1> %x1, <8 x i1> %x2)
   ret i8 %res

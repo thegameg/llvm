@@ -16,6 +16,7 @@ define void @_Z6throwsv() #0 personality i8* bitcast (i32 (...)* @__gxx_personal
 
 ; CHECK-LABEL:   _Z6throwsv:
 ; CHECK:         popq %rbp
+; CHECK-NEXT:    .cfi_restore %rbp
 ; CHECK-NEXT:    .cfi_def_cfa %rsp, 8
 ; CHECK-NEXT:    retq
 ; CHECK-NEXT:    .LBB0_1:

@@ -62,6 +62,7 @@ define void @test_xmm(i32 %shift, i32 %mulp, <2 x i64> %a,i8* %arraydecay,i8* %f
 ; CHECK-NEXT:    callq _check_mask16
 ; CHECK-NEXT:    movl %eax, (%rsp) ## 4-byte Spill
 ; CHECK-NEXT:    addq $56, %rsp
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
   %d2 = bitcast <2 x i64> %a to <8 x i16>
   %m2 = call i8 @llvm.x86.avx512.cvtw2mask.128(<8 x i16> %d2)

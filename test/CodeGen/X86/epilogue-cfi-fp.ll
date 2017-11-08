@@ -10,6 +10,7 @@ define i32 @foo(i32 %i, i32 %j, i32 %k, i32 %l, i32 %m) #0 {
 
 ; CHECK-LABEL:   foo:
 ; CHECK:         popl %ebp
+; CHECK-NEXT:    .cfi_restore %ebp
 ; CHECK-NEXT:    .cfi_def_cfa %esp, 4
 ; CHECK-NEXT:    retl
 

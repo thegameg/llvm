@@ -1129,6 +1129,7 @@ define i64 @test_reduce_v8i64(<8 x i64> %a0) {
 ; X86-SSE2-NEXT:    pshufd {{.*#+}} xmm0 = xmm2[1,1,2,3]
 ; X86-SSE2-NEXT:    movd %xmm0, %edx
 ; X86-SSE2-NEXT:    addl $28, %esp
+; X86-SSE2-NEXT:    .cfi_def_cfa_offset 4
 ; X86-SSE2-NEXT:    retl
 ;
 ; X86-SSE42-LABEL: test_reduce_v8i64:

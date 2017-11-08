@@ -33,6 +33,7 @@ define i8** @japi1_convert_690(i8**, i8***, i32) {
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    popl %ebx
 ; CHECK-NEXT:    .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %ebx
 ; CHECK-NEXT:    retl
 top:
   %3 = alloca i8***

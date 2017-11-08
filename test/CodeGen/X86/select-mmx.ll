@@ -48,7 +48,10 @@ define i64 @test47(i64 %arg)  {
 ; I32-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; I32-NEXT:    movl %ebp, %esp
 ; I32-NEXT:    popl %ebp
-; I32-NEXT:   .cfi_def_cfa %esp, 4
+; I32-NEXT:    .cfi_def_cfa_offset 0
+; I32-NEXT:    .cfi_restore %ebp
+; I32-NEXT:    .cfi_restore %ebp
+; I32-NEXT:    .cfi_def_cfa %esp, 4
 ; I32-NEXT:    retl
   %cond = icmp eq i64 %arg, 0
   %slct = select i1 %cond, x86_mmx bitcast (i64 7 to x86_mmx), x86_mmx bitcast (i64 0 to x86_mmx)
@@ -101,7 +104,10 @@ define i64 @test49(i64 %arg, i64 %x, i64 %y) {
 ; I32-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; I32-NEXT:    movl %ebp, %esp
 ; I32-NEXT:    popl %ebp
-; I32-NEXT:   .cfi_def_cfa %esp, 4
+; I32-NEXT:    .cfi_def_cfa_offset 0
+; I32-NEXT:    .cfi_restore %ebp
+; I32-NEXT:    .cfi_restore %ebp
+; I32-NEXT:    .cfi_def_cfa %esp, 4
 ; I32-NEXT:    retl
   %cond = icmp eq i64 %arg, 0
   %xmmx = bitcast i64 %x to x86_mmx

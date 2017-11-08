@@ -24,8 +24,10 @@ entry:
 ; CHECK-NEXT: 	  .cfi_def_cfa_offset 24
 ; CHECK-NEXT: 	popq	%rbx
 ; CHECK-NEXT: 	  .cfi_def_cfa_offset 16
+; CHECK-NEXT: 	  .cfi_restore %rbx
 ; CHECK-NEXT: 	popq	%r14
 ; CHECK-NEXT: 	  .cfi_def_cfa_offset 8
+; CHECK-NEXT: 	  .cfi_restore %r14
 ; CHECK-NEXT: 	retq
 
 define void @withDebug() !dbg !18 {
@@ -49,8 +51,10 @@ entry:
 ; CHECK-NEXT: addq $16, %rsp
 ; CHECK:       popq  %rbx
 ; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT: 	  .cfi_restore %rbx
 ; CHECK-NEXT:  popq  %r14
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
+; CHECK-NEXT: 	  .cfi_restore %r14
 ; CHECK-NEXT:  retq
 
 declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)

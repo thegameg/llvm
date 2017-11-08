@@ -1069,6 +1069,7 @@ define void @isel_crash_16b(i8* %cV_R.addr) {
 ; X32-NEXT:    vmovaps %xmm0, {{[0-9]+}}(%esp)
 ; X32-NEXT:    vmovdqa %xmm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    addl $60, %esp
+; X32-NEXT:    .cfi_def_cfa_offset 4
 ; X32-NEXT:    retl
 ;
 ; X64-LABEL: isel_crash_16b:
@@ -1114,6 +1115,10 @@ define void @isel_crash_32b(i8* %cV_R.addr) {
 ; X32-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    movl %ebp, %esp
 ; X32-NEXT:    popl %ebp
+; X32-NEXT:    .cfi_def_cfa_offset 0
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_def_cfa %esp, 4
 ; X32-NEXT:    vzeroupper
 ; X32-NEXT:    retl
 ;
@@ -1135,6 +1140,10 @@ define void @isel_crash_32b(i8* %cV_R.addr) {
 ; X64-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-NEXT:    movq %rbp, %rsp
 ; X64-NEXT:    popq %rbp
+; X64-NEXT:    .cfi_def_cfa_offset 0
+; X64-NEXT:    .cfi_restore %rbp
+; X64-NEXT:    .cfi_restore %rbp
+; X64-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 eintry:
@@ -1164,6 +1173,7 @@ define void @isel_crash_8w(i16* %cV_R.addr) {
 ; X32-NEXT:    vmovaps %xmm0, {{[0-9]+}}(%esp)
 ; X32-NEXT:    vmovdqa %xmm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    addl $60, %esp
+; X32-NEXT:    .cfi_def_cfa_offset 4
 ; X32-NEXT:    retl
 ;
 ; X64-LABEL: isel_crash_8w:
@@ -1209,6 +1219,10 @@ define void @isel_crash_16w(i16* %cV_R.addr) {
 ; X32-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    movl %ebp, %esp
 ; X32-NEXT:    popl %ebp
+; X32-NEXT:    .cfi_def_cfa_offset 0
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_def_cfa %esp, 4
 ; X32-NEXT:    vzeroupper
 ; X32-NEXT:    retl
 ;
@@ -1230,6 +1244,10 @@ define void @isel_crash_16w(i16* %cV_R.addr) {
 ; X64-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-NEXT:    movq %rbp, %rsp
 ; X64-NEXT:    popq %rbp
+; X64-NEXT:    .cfi_def_cfa_offset 0
+; X64-NEXT:    .cfi_restore %rbp
+; X64-NEXT:    .cfi_restore %rbp
+; X64-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 eintry:
@@ -1259,6 +1277,7 @@ define void @isel_crash_4d(i32* %cV_R.addr) {
 ; X32-NEXT:    vmovaps %xmm0, {{[0-9]+}}(%esp)
 ; X32-NEXT:    vmovaps %xmm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    addl $60, %esp
+; X32-NEXT:    .cfi_def_cfa_offset 4
 ; X32-NEXT:    retl
 ;
 ; X64-AVX2-LABEL: isel_crash_4d:
@@ -1314,6 +1333,10 @@ define void @isel_crash_8d(i32* %cV_R.addr) {
 ; X32-NEXT:    vmovaps %ymm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    movl %ebp, %esp
 ; X32-NEXT:    popl %ebp
+; X32-NEXT:    .cfi_def_cfa_offset 0
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_def_cfa %esp, 4
 ; X32-NEXT:    vzeroupper
 ; X32-NEXT:    retl
 ;
@@ -1335,6 +1358,10 @@ define void @isel_crash_8d(i32* %cV_R.addr) {
 ; X64-AVX2-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-AVX2-NEXT:    movq %rbp, %rsp
 ; X64-AVX2-NEXT:    popq %rbp
+; X64-AVX2-NEXT:    .cfi_def_cfa_offset 0
+; X64-AVX2-NEXT:    .cfi_restore %rbp
+; X64-AVX2-NEXT:    .cfi_restore %rbp
+; X64-AVX2-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -1355,6 +1382,10 @@ define void @isel_crash_8d(i32* %cV_R.addr) {
 ; X64-AVX512VL-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-AVX512VL-NEXT:    movq %rbp, %rsp
 ; X64-AVX512VL-NEXT:    popq %rbp
+; X64-AVX512VL-NEXT:    .cfi_def_cfa_offset 0
+; X64-AVX512VL-NEXT:    .cfi_restore %rbp
+; X64-AVX512VL-NEXT:    .cfi_restore %rbp
+; X64-AVX512VL-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-AVX512VL-NEXT:    vzeroupper
 ; X64-AVX512VL-NEXT:    retq
 eintry:
@@ -1389,6 +1420,7 @@ define void @isel_crash_2q(i64* %cV_R.addr) {
 ; X32-NEXT:    vmovaps %xmm0, {{[0-9]+}}(%esp)
 ; X32-NEXT:    vmovdqa %xmm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    addl $60, %esp
+; X32-NEXT:    .cfi_def_cfa_offset 4
 ; X32-NEXT:    retl
 ;
 ; X64-AVX2-LABEL: isel_crash_2q:
@@ -1449,6 +1481,10 @@ define void @isel_crash_4q(i64* %cV_R.addr) {
 ; X32-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    movl %ebp, %esp
 ; X32-NEXT:    popl %ebp
+; X32-NEXT:    .cfi_def_cfa_offset 0
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_restore %ebp
+; X32-NEXT:    .cfi_def_cfa %esp, 4
 ; X32-NEXT:    vzeroupper
 ; X32-NEXT:    retl
 ;
@@ -1470,6 +1506,10 @@ define void @isel_crash_4q(i64* %cV_R.addr) {
 ; X64-AVX2-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-AVX2-NEXT:    movq %rbp, %rsp
 ; X64-AVX2-NEXT:    popq %rbp
+; X64-AVX2-NEXT:    .cfi_def_cfa_offset 0
+; X64-AVX2-NEXT:    .cfi_restore %rbp
+; X64-AVX2-NEXT:    .cfi_restore %rbp
+; X64-AVX2-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -1490,6 +1530,10 @@ define void @isel_crash_4q(i64* %cV_R.addr) {
 ; X64-AVX512VL-NEXT:    vmovdqa %ymm1, {{[0-9]+}}(%rsp)
 ; X64-AVX512VL-NEXT:    movq %rbp, %rsp
 ; X64-AVX512VL-NEXT:    popq %rbp
+; X64-AVX512VL-NEXT:    .cfi_def_cfa_offset 0
+; X64-AVX512VL-NEXT:    .cfi_restore %rbp
+; X64-AVX512VL-NEXT:    .cfi_restore %rbp
+; X64-AVX512VL-NEXT:    .cfi_def_cfa %rsp, 8
 ; X64-AVX512VL-NEXT:    vzeroupper
 ; X64-AVX512VL-NEXT:    retq
 eintry:

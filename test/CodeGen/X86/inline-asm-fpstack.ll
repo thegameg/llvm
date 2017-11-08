@@ -167,6 +167,7 @@ define void @testPR4459(x86_fp80 %a) {
 ; CHECK-NEXT:    fstpt (%esp)
 ; CHECK-NEXT:    calll _test3
 ; CHECK-NEXT:    addl $28, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
 entry:
   %0 = call x86_fp80 @ceil(x86_fp80 %a)
@@ -195,6 +196,7 @@ define void @testPR4484(x86_fp80 %a) {
 ; CHECK-NEXT:    fstpt (%esp)
 ; CHECK-NEXT:    calll _test3
 ; CHECK-NEXT:    addl $28, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
 entry:
   %0 = call x86_fp80 @test1()
@@ -477,6 +479,7 @@ define void @test_live_st(i32 %a1) {
 ; CHECK-NEXT:    movl L_fpu$non_lazy_ptr, %eax
 ; CHECK-NEXT:    fstpt 128(%eax)
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
 entry:
   %0 = load x86_fp80, x86_fp80* undef, align 16

@@ -21,6 +21,7 @@ define i32 @my_get_xyz() {
 ; X32-NEXT: .cfi_def_cfa_offset 8
 ; X32-NEXT: popl %ebx
 ; X32-NEXT: .cfi_def_cfa_offset 4
+; X32-NEXT: .cfi_restore %ebx
 ; X32-NEXT: retl
 ; X64-LABEL: my_get_xyz:
 ; X64:      movq my_emutls_v_xyz@GOTPCREL(%rip), %rdi
@@ -50,6 +51,7 @@ define i32 @f1() {
 ; X32-NEXT: .cfi_def_cfa_offset 8
 ; X32-NEXT: popl %ebx
 ; X32-NEXT: .cfi_def_cfa_offset 4
+; X32-NEXT: .cfi_restore %ebx
 ; X32-NEXT: retl
 ; X64-LABEL: f1:
 ; X64:      leaq __emutls_v.i(%rip), %rdi

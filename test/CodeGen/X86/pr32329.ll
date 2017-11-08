@@ -58,12 +58,16 @@ define void @foo() local_unnamed_addr {
 ; X86-NEXT:    movb %bl, var_218
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:    .cfi_def_cfa_offset 16
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    popl %edi
 ; X86-NEXT:    .cfi_def_cfa_offset 12
+; X86-NEXT:    .cfi_restore %edi
 ; X86-NEXT:    popl %ebx
 ; X86-NEXT:    .cfi_def_cfa_offset 8
+; X86-NEXT:    .cfi_restore %ebx
 ; X86-NEXT:    popl %ebp
 ; X86-NEXT:    .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %ebp
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: foo:

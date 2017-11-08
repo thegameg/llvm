@@ -15,6 +15,7 @@ define <4 x i1> @test_4i1(<4 x i32> %a, <4 x i32> %b) {
 ; CHECK-NEXT:    kmovw {{[0-9]+}}(%rsp), %k0 ## 2-byte Reload
 ; CHECK-NEXT:    vpmovm2d %k0, %xmm0
 ; CHECK-NEXT:    popq %rax
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
 
   %cmp_res = icmp ugt <4 x i32> %a, %b
@@ -38,6 +39,7 @@ define <8 x i1> @test_8i1(<8 x i32> %a, <8 x i32> %b) {
 ; CHECK-NEXT:    kmovw {{[0-9]+}}(%rsp), %k0 ## 2-byte Reload
 ; CHECK-NEXT:    vpmovm2w %k0, %xmm0
 ; CHECK-NEXT:    popq %rax
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
 
   %cmp_res = icmp ugt <8 x i32> %a, %b
@@ -61,6 +63,7 @@ define <16 x i1> @test_16i1(<16 x i32> %a, <16 x i32> %b) {
 ; CHECK-NEXT:    kmovw {{[0-9]+}}(%rsp), %k0 ## 2-byte Reload
 ; CHECK-NEXT:    vpmovm2b %k0, %xmm0
 ; CHECK-NEXT:    popq %rax
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
   %cmp_res = icmp ugt <16 x i32> %a, %b
   %cmp_res2 = icmp sgt <16 x i32> %a, %b
@@ -83,6 +86,7 @@ define <32 x i1> @test_32i1(<32 x i16> %a, <32 x i16> %b) {
 ; CHECK-NEXT:    kmovd {{[0-9]+}}(%rsp), %k0 ## 4-byte Reload
 ; CHECK-NEXT:    vpmovm2b %k0, %ymm0
 ; CHECK-NEXT:    popq %rax
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
   %cmp_res = icmp ugt <32 x i16> %a, %b
   %cmp_res2 = icmp sgt <32 x i16> %a, %b
@@ -105,6 +109,7 @@ define <64 x i1> @test_64i1(<64 x i8> %a, <64 x i8> %b) {
 ; CHECK-NEXT:    kmovq (%rsp), %k0 ## 8-byte Reload
 ; CHECK-NEXT:    vpmovm2b %k0, %zmm0
 ; CHECK-NEXT:    popq %rax
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
 
   %cmp_res = icmp ugt <64 x i8> %a, %b

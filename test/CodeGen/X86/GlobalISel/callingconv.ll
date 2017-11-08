@@ -333,8 +333,10 @@ define void @test_abi_exts_call(i8* %addr) {
 ; X32-NEXT:    .cfi_def_cfa_offset 12
 ; X32-NEXT:    popl %esi
 ; X32-NEXT:    .cfi_def_cfa_offset 8
+; X32-NEXT:    .cfi_restore %esi
 ; X32-NEXT:    popl %ebx
 ; X32-NEXT:    .cfi_def_cfa_offset 4
+; X32-NEXT:    .cfi_restore %ebx
 ; X32-NEXT:    retl
 ;
 ; X64-LABEL: test_abi_exts_call:
@@ -352,6 +354,7 @@ define void @test_abi_exts_call(i8* %addr) {
 ; X64-NEXT:    callq take_char
 ; X64-NEXT:    popq %rbx
 ; X64-NEXT:    .cfi_def_cfa_offset 8
+; X64-NEXT:    .cfi_restore %rbx
 ; X64-NEXT:    retq
   %val = load i8, i8* %addr
   call void @take_char(i8 %val)

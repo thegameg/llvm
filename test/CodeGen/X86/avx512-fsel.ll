@@ -22,6 +22,7 @@ define i32 @test(float %a, float %b)  {
 ; CHECK-NEXT:  LBB0_2: ## %L_1
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    popq %rcx
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq
   %x10 = fcmp oeq float %a, %b
   %x11 = xor i1 %x10, true

@@ -53,6 +53,7 @@ define i32 @_Z3foov() {
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:    .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    retl
 entry:
   %aa = alloca i16, align 2

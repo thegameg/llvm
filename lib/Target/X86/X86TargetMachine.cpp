@@ -441,6 +441,6 @@ void X86PassConfig::addPreEmitPass() {
   // correct CFA calculation rule where needed by inserting appropriate CFI
   // instructions.
   const Triple &TT = TM->getTargetTriple();
-  if (!TT.isOSDarwin() && !TT.isOSWindows())
+  if (!TT.isOSWindows())
     addPass(createCFIInstrInserter());
 }

@@ -18,6 +18,7 @@ define float @test1(float %X) {
 ; CHECK-NEXT:    fstps (%esp)
 ; CHECK-NEXT:    calll _sinf
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call float @sinf(float %X) readonly
         ret float %Y
@@ -32,6 +33,7 @@ define double @test2(double %X) {
 ; CHECK-NEXT:    fstpl (%esp)
 ; CHECK-NEXT:    calll _sin
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call double @sin(double %X) readonly
         ret double %Y
@@ -46,6 +48,7 @@ define x86_fp80 @test3(x86_fp80 %X) {
 ; CHECK-NEXT:    fstpt (%esp)
 ; CHECK-NEXT:    calll _sinl
 ; CHECK-NEXT:    addl $28, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call x86_fp80 @sinl(x86_fp80 %X) readonly
         ret x86_fp80 %Y
@@ -67,6 +70,7 @@ define float @test4(float %X) {
 ; CHECK-NEXT:    fstps (%esp)
 ; CHECK-NEXT:    calll _cosf
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call float @cosf(float %X) readonly
         ret float %Y
@@ -81,6 +85,7 @@ define double @test5(double %X) {
 ; CHECK-NEXT:    fstpl (%esp)
 ; CHECK-NEXT:    calll _cos
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call double @cos(double %X) readonly
         ret double %Y
@@ -95,6 +100,7 @@ define x86_fp80 @test6(x86_fp80 %X) {
 ; CHECK-NEXT:    fstpt (%esp)
 ; CHECK-NEXT:    calll _cosl
 ; CHECK-NEXT:    addl $28, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
         %Y = call x86_fp80 @cosl(x86_fp80 %X) readonly
         ret x86_fp80 %Y

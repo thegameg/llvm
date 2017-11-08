@@ -12,10 +12,13 @@ define i32 @foo(i32 %i, i32 %j, i32 %k, i32 %l, i32 %m) {
 ; CHECK-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-NEXT:    popl	%esi
 ; CHECK-NEXT:    .cfi_def_cfa_offset 12
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    popl	%edi
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
+; CHECK-NEXT:    .cfi_restore %edi
 ; CHECK-NEXT:    popl	%ebx
 ; CHECK-NEXT:    .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %ebx
 ; CHECK-NEXT:    retl
 entry:
   %i.addr = alloca i32, align 4

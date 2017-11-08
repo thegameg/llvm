@@ -39,6 +39,7 @@ target triple = "x86_64-apple-macosx"
 ; Without shrink-wrapping, epilogue is in the exit block.
 ; Epilogue code. (What we pop does not matter.)
 ; CHECK-NEXT: popq
+; CHECK-NEXT: .cfi_def_cfa_offset
 ;
 ; CHECK-NEXT: retq
 define i32 @framelessUnwind(i32 %a, i32 %b) #0 {

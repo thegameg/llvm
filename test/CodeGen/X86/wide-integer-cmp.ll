@@ -106,12 +106,15 @@ define i32 @test_wide(i128 %a, i128 %b) {
 ; CHECK-NEXT:    movl $1, %eax
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:    .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    retl
 ; CHECK-NEXT:  .LBB4_2: # %bb2
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
+; CHECK-NEXT:    .cfi_offset %esi, -8
 ; CHECK-NEXT:    movl $2, %eax
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:    .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    retl
 entry:
   %cmp = icmp slt i128 %a, %b

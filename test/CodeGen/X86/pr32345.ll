@@ -81,9 +81,18 @@ define void @foo() {
 ; 6860-NEXT:    movb %cl, (%eax)
 ; 6860-NEXT:    leal -12(%ebp), %esp
 ; 6860-NEXT:    popl %esi
+; 6860-NEXT:    .cfi_def_cfa_offset 12
+; 6860-NEXT:    .cfi_restore %esi
 ; 6860-NEXT:    popl %edi
+; 6860-NEXT:    .cfi_def_cfa_offset 8
+; 6860-NEXT:    .cfi_restore %edi
 ; 6860-NEXT:    popl %ebx
+; 6860-NEXT:    .cfi_def_cfa_offset 4
+; 6860-NEXT:    .cfi_restore %ebx
 ; 6860-NEXT:    popl %ebp
+; 6860-NEXT:    .cfi_def_cfa_offset 0
+; 6860-NEXT:    .cfi_restore %ebp
+; 6860-NEXT:    .cfi_restore %ebp
 ; 6860-NEXT:    .cfi_def_cfa %esp, 4
 ; 6860-NEXT:    retl
 ;
@@ -128,6 +137,9 @@ define void @foo() {
 ; 686-NEXT:    movb %dl, (%eax)
 ; 686-NEXT:    movl %ebp, %esp
 ; 686-NEXT:    popl %ebp
+; 686-NEXT:    .cfi_def_cfa_offset 0
+; 686-NEXT:    .cfi_restore %ebp
+; 686-NEXT:    .cfi_restore %ebp
 ; 686-NEXT:    .cfi_def_cfa %esp, 4
 ; 686-NEXT:    retl
 bb:

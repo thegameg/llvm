@@ -32,6 +32,7 @@ define void @mul_2xi8(i8* nocapture readonly %a, i8* nocapture readonly %b, i64 
 ; X86-NEXT:    movq %xmm1, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi8:
@@ -91,6 +92,7 @@ define void @mul_4xi8(i8* nocapture readonly %a, i8* nocapture readonly %b, i64 
 ; X86-NEXT:    movdqu %xmm1, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_4xi8:
@@ -151,6 +153,7 @@ define void @mul_8xi8(i8* nocapture readonly %a, i8* nocapture readonly %b, i64 
 ; X86-NEXT:    movdqu %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_8xi8:
@@ -224,6 +227,7 @@ define void @mul_16xi8(i8* nocapture readonly %a, i8* nocapture readonly %b, i64
 ; X86-NEXT:    movdqu %xmm3, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_16xi8:
@@ -293,6 +297,7 @@ define void @mul_2xi16(i8* nocapture readonly %a, i8* nocapture readonly %b, i64
 ; X86-NEXT:    movq %xmm1, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi16:
@@ -348,6 +353,7 @@ define void @mul_4xi16(i8* nocapture readonly %a, i8* nocapture readonly %b, i64
 ; X86-NEXT:    movdqu %xmm1, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_4xi16:
@@ -406,6 +412,7 @@ define void @mul_8xi16(i8* nocapture readonly %a, i8* nocapture readonly %b, i64
 ; X86-NEXT:    movdqu %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_8xi16:
@@ -477,6 +484,7 @@ define void @mul_16xi16(i8* nocapture readonly %a, i8* nocapture readonly %b, i6
 ; X86-NEXT:    movdqu %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_16xi16:
@@ -550,6 +558,7 @@ define void @mul_2xi8_sext(i8* nocapture readonly %a, i8* nocapture readonly %b,
 ; X86-NEXT:    movq %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi8_sext:
@@ -616,6 +625,7 @@ define void @mul_2xi8_sext_zext(i8* nocapture readonly %a, i8* nocapture readonl
 ; X86-NEXT:    movq %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi8_sext_zext:
@@ -677,6 +687,7 @@ define void @mul_2xi16_sext(i8* nocapture readonly %a, i8* nocapture readonly %b
 ; X86-NEXT:    movq %xmm1, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi16_sext:
@@ -745,6 +756,7 @@ define void @mul_2xi16_sext_zext(i8* nocapture readonly %a, i8* nocapture readon
 ; X86-NEXT:    movq %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_2xi16_sext_zext:
@@ -826,6 +838,7 @@ define void @mul_16xi16_sext(i8* nocapture readonly %a, i8* nocapture readonly %
 ; X86-NEXT:    movdqu %xmm0, (%esi,%ecx,4)
 ; X86-NEXT:    popl %esi
 ; X86-NEXT:   .cfi_def_cfa_offset 4
+; X86-NEXT:    .cfi_restore %esi
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: mul_16xi16_sext:

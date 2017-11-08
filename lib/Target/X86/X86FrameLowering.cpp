@@ -1563,8 +1563,7 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
   uint64_t NumBytes = 0;
 
   bool NeedsDwarfCFI =
-      (!MF.getTarget().getTargetTriple().isOSDarwin() &&
-       !MF.getTarget().getTargetTriple().isOSWindows()) &&
+      (!MF.getTarget().getTargetTriple().isOSWindows()) &&
       (MF.getMMI().hasDebugInfo() || MF.getFunction()->needsUnwindTableEntry());
 
   if (IsFunclet) {
@@ -1681,7 +1680,7 @@ void X86FrameLowering::emitEpilogue(MachineFunction &MF,
   if (NeedsWin64CFI && MF.hasWinCFI())
     BuildMI(MBB, MBBI, DL, TII.get(X86::SEH_Epilogue));
 
-  if (!hasFP(MF) && NeedsDwarfCFI) {
+  if (NeedsDwarfCFI) {
     MBBI = FirstCSPop;
     int64_t Offset = -CSSize - SlotSize;
     // Mark callee-saved pop instruction.

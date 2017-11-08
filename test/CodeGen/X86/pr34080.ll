@@ -44,6 +44,10 @@ define void @_Z1fe(x86_fp80 %z) local_unnamed_addr #0 {
 ; SSE2-NEXT:    fmulp %st(1)
 ; SSE2-NEXT:    fstpl -48(%rbp)
 ; SSE2-NEXT:    popq %rbp
+; SSE2-NEXT:    .cfi_def_cfa_offset 0
+; SSE2-NEXT:    .cfi_restore %rbp
+; SSE2-NEXT:    .cfi_restore %rbp
+; SSE2-NEXT:    .cfi_def_cfa %rsp, 8
 ; SSE2-NEXT:    retq
 ;
 ; SSE2-BROKEN-LABEL: _Z1fe:
@@ -83,6 +87,10 @@ define void @_Z1fe(x86_fp80 %z) local_unnamed_addr #0 {
 ; SSE2-BROKEN-NEXT:    fmulp %st(1)
 ; SSE2-BROKEN-NEXT:    fstpl -48(%rbp)
 ; SSE2-BROKEN-NEXT:    popq %rbp
+; SSE2-BROKEN-NEXT:    .cfi_def_cfa_offset 0
+; SSE2-BROKEN-NEXT:    .cfi_restore %rbp
+; SSE2-BROKEN-NEXT:    .cfi_restore %rbp
+; SSE2-BROKEN-NEXT:    .cfi_def_cfa %rsp, 8
 ; SSE2-BROKEN-NEXT:    retq
 ;
 ; SSE3-LABEL: _Z1fe:
@@ -112,6 +120,10 @@ define void @_Z1fe(x86_fp80 %z) local_unnamed_addr #0 {
 ; SSE3-NEXT:    fmulp %st(1)
 ; SSE3-NEXT:    fstpl -32(%rbp)
 ; SSE3-NEXT:    popq %rbp
+; SSE3-NEXT:    .cfi_def_cfa_offset 0
+; SSE3-NEXT:    .cfi_restore %rbp
+; SSE3-NEXT:    .cfi_restore %rbp
+; SSE3-NEXT:    .cfi_def_cfa %rsp, 8
 ; SSE3-NEXT:    retq
 ;
 ; AVX-LABEL: _Z1fe:
@@ -140,6 +152,10 @@ define void @_Z1fe(x86_fp80 %z) local_unnamed_addr #0 {
 ; AVX-NEXT:    fmulp %st(1)
 ; AVX-NEXT:    fstpl -32(%rbp)
 ; AVX-NEXT:    popq %rbp
+; AVX-NEXT:    .cfi_def_cfa_offset 0
+; AVX-NEXT:    .cfi_restore %rbp
+; AVX-NEXT:    .cfi_restore %rbp
+; AVX-NEXT:    .cfi_def_cfa %rsp, 8
 ; AVX-NEXT:    retq
 entry:
   %tx = alloca [3 x double], align 16

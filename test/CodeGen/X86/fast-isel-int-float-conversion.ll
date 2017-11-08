@@ -31,6 +31,9 @@ define double @int_to_double_rr(i32 %a) {
 ; SSE2_X86-NEXT:    fldl (%esp)
 ; SSE2_X86-NEXT:    movl %ebp, %esp
 ; SSE2_X86-NEXT:    popl %ebp
+; SSE2_X86-NEXT:    .cfi_def_cfa_offset 0
+; SSE2_X86-NEXT:    .cfi_restore %ebp
+; SSE2_X86-NEXT:    .cfi_restore %ebp
 ; SSE2_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; SSE2_X86-NEXT:    retl
 ;
@@ -48,6 +51,9 @@ define double @int_to_double_rr(i32 %a) {
 ; AVX_X86-NEXT:    fldl (%esp)
 ; AVX_X86-NEXT:    movl %ebp, %esp
 ; AVX_X86-NEXT:    popl %ebp
+; AVX_X86-NEXT:    .cfi_def_cfa_offset 0
+; AVX_X86-NEXT:    .cfi_restore %ebp
+; AVX_X86-NEXT:    .cfi_restore %ebp
 ; AVX_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; AVX_X86-NEXT:    retl
 entry:
@@ -82,6 +88,9 @@ define double @int_to_double_rm(i32* %a) {
 ; SSE2_X86-NEXT:    fldl (%esp)
 ; SSE2_X86-NEXT:    movl %ebp, %esp
 ; SSE2_X86-NEXT:    popl %ebp
+; SSE2_X86-NEXT:    .cfi_def_cfa_offset 0
+; SSE2_X86-NEXT:    .cfi_restore %ebp
+; SSE2_X86-NEXT:    .cfi_restore %ebp
 ; SSE2_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; SSE2_X86-NEXT:    retl
 ;
@@ -100,6 +109,9 @@ define double @int_to_double_rm(i32* %a) {
 ; AVX_X86-NEXT:    fldl (%esp)
 ; AVX_X86-NEXT:    movl %ebp, %esp
 ; AVX_X86-NEXT:    popl %ebp
+; AVX_X86-NEXT:    .cfi_def_cfa_offset 0
+; AVX_X86-NEXT:    .cfi_restore %ebp
+; AVX_X86-NEXT:    .cfi_restore %ebp
 ; AVX_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; AVX_X86-NEXT:    retl
 entry:
@@ -134,6 +146,9 @@ define double @int_to_double_rm_optsize(i32* %a) optsize {
 ; SSE2_X86-NEXT:    fldl (%esp)
 ; SSE2_X86-NEXT:    movl %ebp, %esp
 ; SSE2_X86-NEXT:    popl %ebp
+; SSE2_X86-NEXT:    .cfi_def_cfa_offset 0
+; SSE2_X86-NEXT:    .cfi_restore %ebp
+; SSE2_X86-NEXT:    .cfi_restore %ebp
 ; SSE2_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; SSE2_X86-NEXT:    retl
 ;
@@ -152,6 +167,9 @@ define double @int_to_double_rm_optsize(i32* %a) optsize {
 ; AVX_X86-NEXT:    fldl (%esp)
 ; AVX_X86-NEXT:    movl %ebp, %esp
 ; AVX_X86-NEXT:    popl %ebp
+; AVX_X86-NEXT:    .cfi_def_cfa_offset 0
+; AVX_X86-NEXT:    .cfi_restore %ebp
+; AVX_X86-NEXT:    .cfi_restore %ebp
 ; AVX_X86-NEXT:    .cfi_def_cfa %esp, 4
 ; AVX_X86-NEXT:    retl
 entry:

@@ -352,12 +352,16 @@ define void @test(i256* %a, i256* %b, i256* %out) #0 {
 ; X32-NEXT:   .cfi_def_cfa_offset 20
 ; X32-NEXT:    popl %esi
 ; X32-NEXT:   .cfi_def_cfa_offset 16
+; X32-NEXT:    .cfi_restore %esi
 ; X32-NEXT:    popl %edi
 ; X32-NEXT:   .cfi_def_cfa_offset 12
+; X32-NEXT:    .cfi_restore %edi
 ; X32-NEXT:    popl %ebx
 ; X32-NEXT:   .cfi_def_cfa_offset 8
+; X32-NEXT:    .cfi_restore %ebx
 ; X32-NEXT:    popl %ebp
 ; X32-NEXT:   .cfi_def_cfa_offset 4
+; X32-NEXT:    .cfi_restore %ebp
 ; X32-NEXT:    retl
 ;
 ; X64-LABEL: test:
@@ -427,10 +431,13 @@ define void @test(i256* %a, i256* %b, i256* %out) #0 {
 ; X64-NEXT:    movq %rdx, 24(%r9)
 ; X64-NEXT:    popq %rbx
 ; X64-NEXT:    .cfi_def_cfa_offset 24
+; X64-NEXT:    .cfi_restore %rbx
 ; X64-NEXT:    popq %r14
 ; X64-NEXT:    .cfi_def_cfa_offset 16
+; X64-NEXT:    .cfi_restore %r14
 ; X64-NEXT:    popq %r15
 ; X64-NEXT:    .cfi_def_cfa_offset 8
+; X64-NEXT:    .cfi_restore %r15
 ; X64-NEXT:    retq
 entry:
   %av = load i256, i256* %a

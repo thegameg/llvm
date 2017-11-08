@@ -237,12 +237,16 @@ define void @f1() {
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 20
 ; 686-O0-NEXT:    popl %esi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 16
+; 686-O0-NEXT:    .cfi_restore %esi
 ; 686-O0-NEXT:    popl %edi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 12
+; 686-O0-NEXT:    .cfi_restore %edi
 ; 686-O0-NEXT:    popl %ebx
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 8
+; 686-O0-NEXT:    .cfi_restore %ebx
 ; 686-O0-NEXT:    popl %ebp
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 4
+; 686-O0-NEXT:    .cfi_restore %ebp
 ; 686-O0-NEXT:    retl
 ;
 ; 686-LABEL: f1:
@@ -287,8 +291,10 @@ define void @f1() {
 ; 686-NEXT:    .cfi_def_cfa_offset 12
 ; 686-NEXT:    popl %esi
 ; 686-NEXT:    .cfi_def_cfa_offset 8
+; 686-NEXT:    .cfi_restore %esi
 ; 686-NEXT:    popl %edi
 ; 686-NEXT:    .cfi_def_cfa_offset 4
+; 686-NEXT:    .cfi_restore %edi
 ; 686-NEXT:    retl
 entry:
   %a = alloca i8, align 1
@@ -405,8 +411,10 @@ define void @f2() {
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 12
 ; 686-O0-NEXT:    popl %esi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 8
+; 686-O0-NEXT:    .cfi_restore %esi
 ; 686-O0-NEXT:    popl %edi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 4
+; 686-O0-NEXT:    .cfi_restore %edi
 ; 686-O0-NEXT:    retl
 ;
 ; 686-LABEL: f2:
@@ -544,8 +552,15 @@ define void @f3() #0 {
 ; 686-O0-NEXT:    movl %ecx, var_46
 ; 686-O0-NEXT:    leal -8(%ebp), %esp
 ; 686-O0-NEXT:    popl %esi
+; 686-O0-NEXT:    .cfi_def_cfa_offset 8
+; 686-O0-NEXT:    .cfi_restore %esi
 ; 686-O0-NEXT:    popl %edi
+; 686-O0-NEXT:    .cfi_def_cfa_offset 4
+; 686-O0-NEXT:    .cfi_restore %edi
 ; 686-O0-NEXT:    popl %ebp
+; 686-O0-NEXT:    .cfi_def_cfa_offset 0
+; 686-O0-NEXT:    .cfi_restore %ebp
+; 686-O0-NEXT:    .cfi_restore %ebp
 ; 686-O0-NEXT:    .cfi_def_cfa %esp, 4
 ; 686-O0-NEXT:    retl
 ;
@@ -573,6 +588,9 @@ define void @f3() #0 {
 ; 686-NEXT:    movl %ecx, var_46
 ; 686-NEXT:    movl %ebp, %esp
 ; 686-NEXT:    popl %ebp
+; 686-NEXT:    .cfi_def_cfa_offset 0
+; 686-NEXT:    .cfi_restore %ebp
+; 686-NEXT:    .cfi_restore %ebp
 ; 686-NEXT:    .cfi_def_cfa %esp, 4
 ; 686-NEXT:    retl
 entry:

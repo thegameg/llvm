@@ -59,6 +59,7 @@ define double @PR22371(double %x) {
 ; CHECK-NEXT:    movlps %xmm0, (%esp)
 ; CHECK-NEXT:    fldl (%esp)
 ; CHECK-NEXT:    addl $12, %esp
+; CHECK-NEXT:    .cfi_def_cfa_offset 4
 ; CHECK-NEXT:    retl
   %call = tail call double @fabs(double %x) #0
   ret double %call

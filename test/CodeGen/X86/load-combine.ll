@@ -377,6 +377,7 @@ define i32 @load_i32_by_i8_bswap_uses(i32* %arg) {
 ; CHECK-NEXT:    orl %edx, %eax
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:   .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    retl
 ;
 ; CHECK64-LABEL: load_i32_by_i8_bswap_uses:
@@ -498,6 +499,7 @@ define i32 @load_i32_by_i8_bswap_store_in_between(i32* %arg, i32* %arg1) {
 ; CHECK-NEXT:    orl %edx, %eax
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:   .cfi_def_cfa_offset 4
+; CHECK-NEXT:    .cfi_restore %esi
 ; CHECK-NEXT:    retl
 ;
 ; CHECK64-LABEL: load_i32_by_i8_bswap_store_in_between:

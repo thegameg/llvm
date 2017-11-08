@@ -7,15 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 //
-/// \file This pass verifies incoming and outgoing CFA information of basic
-/// blocks. CFA information is information about offset and register set by CFI
-/// directives, valid at the start and end of a basic block. This pass checks
-/// that outgoing information of predecessors matches incoming information of
-/// their successors. Then it checks if blocks have correct CFA calculation rule
-/// set and inserts additional CFI instruction at their beginnings if they
-/// don't. CFI instructions are inserted if basic blocks have incorrect offset
-/// or register set by previous blocks, as a result of a non-linear layout of
-/// blocks in a function.
+/// \file This pass verifies the incoming and outgoing CFI state of basic
+/// blocks. The CFI state describes:
+/// * CFA: information about offset and register set by CFI directives, valid at
+/// the start and end of a basic block.
+/// * Callee-saved registers: information about saving / restoring CSRs.
+/// This pass checks that outgoing information of predecessors matches incoming
+/// information of their successors. Then it checks if blocks have correct
+/// information and inserts additional CFI instruction at their beginnings if
+/// they don't. CFI instructions are inserted if basic blocks have incorrect
+/// information, e.g. offset or register set by previous blocks, as a result of
+/// a non-linear layout of blocks in a function.
 //===----------------------------------------------------------------------===//
 
 #include "llvm/CodeGen/MachineFunctionPass.h"
@@ -30,7 +32,7 @@ using namespace llvm;
 
 namespace {
 class CFIInstrInserter : public MachineFunctionPass {
- public:
+public:
   static char ID;
 
   CFIInstrInserter() : MachineFunctionPass(ID) {
@@ -49,7 +51,7 @@ class CFIInstrInserter : public MachineFunctionPass {
       return false;
 
     MBBVector.resize(MF.getNumBlockIDs());
-    calculateCFAInfo(MF);
+    calculateCFIInfo(MF);
 #ifndef NDEBUG
     unsigned ErrorNum = verify(MF);
     if (ErrorNum)
@@ -61,9 +63,8 @@ class CFIInstrInserter : public MachineFunctionPass {
     return insertedCFI;
   }
 
- private:
-  struct MBBCFAInfo {
-    MachineBasicBlock *MBB;
+private:
+  struct MBBCFIInfo {
     /// Value of cfa offset valid at basic block entry.
     int IncomingCFAOffset = -1;
     /// Value of cfa offset valid at basic block exit.
@@ -72,46 +73,51 @@ class CFIInstrInserter : public MachineFunctionPass {
     unsigned IncomingCFARegister = 0;
     /// Value of cfa register valid at basic block exit.
     unsigned OutgoingCFARegister = 0;
-    /// If in/out cfa offset and register values for this block have already
-    /// been set or not.
+    /// If CFI values for this block have already been set or not.
     bool Processed = false;
   };
 
-  /// Contains cfa offset and register values valid at entry and exit of basic
-  /// blocks.
-  SmallVector<struct MBBCFAInfo, 4> MBBVector;
+  /// Contains CFI values valid at entry and exit of basic blocks.
+  SmallVector<MBBCFIInfo, 4> MBBVector;
 
-  /// Calculate cfa offset and register values valid at entry and exit for all
-  /// basic blocks in a function.
-  void calculateCFAInfo(MachineFunction &MF);
-  /// Calculate cfa offset and register values valid at basic block exit by
-  /// checking the block for CFI instructions. Block's incoming CFA info remains
-  /// the same.
-  void calculateOutgoingCFAInfo(struct MBBCFAInfo &MBBInfo);
-  /// Update in/out cfa offset and register values for successors of the basic
-  /// block.
-  void updateSuccCFAInfo(struct MBBCFAInfo &MBBInfo);
+  /// Calculate CFI values valid at entry and exit for all basic blocks in a
+  /// function.
+  void calculateCFIInfo(const MachineFunction &MF);
+  /// Calculate CFI values valid at basic block exit by checking the block for
+  /// CFI instructions. Block's incoming CFI info remains the same.
+  void calculateOutgoingCFIInfo(const MachineBasicBlock &MBB);
+  /// Update in/out CFI values for successors of the basic block.
+  void updateSuccCFIInfo(const MachineBasicBlock &MBB);
 
-  /// Check if incoming CFA information of a basic block matches outgoing CFA
+  /// Check if incoming CFI information of a basic block matches outgoing CFI
   /// information of the previous block. If it doesn't, insert CFI instruction
-  /// at the beginning of the block that corrects the CFA calculation rule for
-  /// that block.
+  /// at the beginning of the block that corrects:
+  /// * the CFA calculation rule for that block.
+  /// * the CSR state.
   bool insertCFIInstrs(MachineFunction &MF);
+  /// Correct CFA calculation rule if needed.
+  bool insertCFACFIInstrs(const MBBCFIInfo &MBBInfo,
+                          const MBBCFIInfo &PrevMBBInfo, MachineBasicBlock &MBB,
+                          MachineBasicBlock::iterator &MBBI);
+  /// Correct CSR calculation rule if needed.
+  bool insertCSRCFIInstrs(const MBBCFIInfo &MBBInfo,
+                          const MBBCFIInfo &PrevMBBInfo, MachineBasicBlock &MBB,
+                          MachineBasicBlock::iterator &MBBI);
   /// Return the cfa offset value that should be set at the beginning of a MBB
   /// if needed. The negated value is needed when creating CFI instructions that
   /// set absolute offset.
-  int getCorrectCFAOffset(MachineBasicBlock *MBB) {
+  int getCorrectCFAOffset(const MachineBasicBlock *MBB) {
     return -MBBVector[MBB->getNumber()].IncomingCFAOffset;
   }
 
-  void report(const char *msg, MachineBasicBlock &MBB);
+  void report(const char *msg, const MachineBasicBlock &MBB);
   /// Go through each MBB in a function and check that outgoing offset and
   /// register of its predecessors match incoming offset and register of that
   /// MBB, as well as that incoming offset and register of its successors match
   /// outgoing offset and register of the MBB.
-  unsigned verify(MachineFunction &MF);
+  unsigned verify(const MachineFunction &MF);
 };
-}
+} // namespace
 
 char CFIInstrInserter::ID = 0;
 INITIALIZE_PASS(CFIInstrInserter, "cfi-instr-inserter",
@@ -119,7 +125,7 @@ INITIALIZE_PASS(CFIInstrInserter, "cfi-instr-inserter",
                 false)
 FunctionPass *llvm::createCFIInstrInserter() { return new CFIInstrInserter(); }
 
-void CFIInstrInserter::calculateCFAInfo(MachineFunction &MF) {
+void CFIInstrInserter::calculateCFIInfo(const MachineFunction &MF) {
   // Initial CFA offset value i.e. the one valid at the beginning of the
   // function.
   int InitialOffset =
@@ -130,50 +136,63 @@ void CFIInstrInserter::calculateCFAInfo(MachineFunction &MF) {
       MF.getSubtarget().getFrameLowering()->getInitialCFARegister(MF);
 
   // Initialize MBBMap.
-  for (MachineBasicBlock &MBB : MF) {
-    struct MBBCFAInfo MBBInfo;
-    MBBInfo.MBB = &MBB;
+  for (const MachineBasicBlock &MBB : MF) {
+    MBBCFIInfo &MBBInfo = MBBVector[MBB.getNumber()];
     MBBInfo.IncomingCFAOffset = InitialOffset;
     MBBInfo.OutgoingCFAOffset = InitialOffset;
     MBBInfo.IncomingCFARegister = InitialRegister;
     MBBInfo.OutgoingCFARegister = InitialRegister;
-    MBBVector[MBB.getNumber()] = MBBInfo;
   }
 
-  // Set in/out cfa info for all blocks in the function. This traversal is based
+  // Set in/out cfi info for all blocks in the function. This traversal is based
   // on the assumption that the first block in the function is the entry block
   // i.e. that it has initial cfa offset and register values as incoming CFA
   // information.
-  for (MachineBasicBlock &MBB : MF) {
-    if (MBBVector[MBB.getNumber()].Processed) continue;
-    calculateOutgoingCFAInfo(MBBVector[MBB.getNumber()]);
-    updateSuccCFAInfo(MBBVector[MBB.getNumber()]);
+  for (const MachineBasicBlock &MBB : MF) {
+    if (MBBVector[MBB.getNumber()].Processed)
+      continue;
+    calculateOutgoingCFIInfo(MBB);
+    updateSuccCFIInfo(MBB);
   }
 }
 
-void CFIInstrInserter::calculateOutgoingCFAInfo(struct MBBCFAInfo &MBBInfo) {
+void CFIInstrInserter::calculateOutgoingCFIInfo(const MachineBasicBlock &MBB) {
+  MBBCFIInfo &MBBInfo = MBBVector[MBB.getNumber()];
   // Outgoing cfa offset set by the block.
   int SetOffset = MBBInfo.IncomingCFAOffset;
   // Outgoing cfa register set by the block.
   unsigned SetRegister = MBBInfo.IncomingCFARegister;
   const std::vector<MCCFIInstruction> &Instrs =
-      MBBInfo.MBB->getParent()->getFrameInstructions();
+      MBB.getParent()->getFrameInstructions();
 
   // Determine cfa offset and register set by the block.
-  for (MachineInstr &MI :
-       make_range(MBBInfo.MBB->instr_begin(), MBBInfo.MBB->instr_end())) {
+  for (const MachineInstr &MI : MBB) {
     if (MI.isCFIInstruction()) {
       unsigned CFIIndex = MI.getOperand(0).getCFIIndex();
       const MCCFIInstruction &CFI = Instrs[CFIIndex];
-      if (CFI.getOperation() == MCCFIInstruction::OpDefCfaRegister) {
+      switch (CFI.getOperation()) {
+      case MCCFIInstruction::OpDefCfaRegister: {
         SetRegister = CFI.getRegister();
-      } else if (CFI.getOperation() == MCCFIInstruction::OpDefCfaOffset) {
+        break;
+      }
+      case MCCFIInstruction::OpDefCfaOffset: {
         SetOffset = CFI.getOffset();
-      } else if (CFI.getOperation() == MCCFIInstruction::OpAdjustCfaOffset) {
+        break;
+      }
+      case MCCFIInstruction::OpAdjustCfaOffset: {
         SetOffset += CFI.getOffset();
-      } else if (CFI.getOperation() == MCCFIInstruction::OpDefCfa) {
+        break;
+      }
+      case MCCFIInstruction::OpDefCfa: {
         SetRegister = CFI.getRegister();
         SetOffset = CFI.getOffset();
+        break;
+      }
+      default: {
+        DEBUG(dbgs() << "Ignored CFI directive: "; MI.print(dbgs());
+              dbgs() << '\n');
+        break;
+      }
       }
     }
   }
@@ -185,69 +204,85 @@ void CFIInstrInserter::calculateOutgoingCFAInfo(struct MBBCFAInfo &MBBInfo) {
   MBBInfo.OutgoingCFARegister = SetRegister;
 }
 
-void CFIInstrInserter::updateSuccCFAInfo(struct MBBCFAInfo &MBBInfo) {
-
-  for (MachineBasicBlock *Succ : MBBInfo.MBB->successors()) {
-    struct MBBCFAInfo &SuccInfo = MBBVector[Succ->getNumber()];
-    if (SuccInfo.Processed) continue;
+void CFIInstrInserter::updateSuccCFIInfo(const MachineBasicBlock &MBB) {
+  MBBCFIInfo &MBBInfo = MBBVector[MBB.getNumber()];
+  for (const MachineBasicBlock *Succ : MBB.successors()) {
+    MBBCFIInfo &SuccInfo = MBBVector[Succ->getNumber()];
+    if (SuccInfo.Processed)
+      continue;
     SuccInfo.IncomingCFAOffset = MBBInfo.OutgoingCFAOffset;
     SuccInfo.IncomingCFARegister = MBBInfo.OutgoingCFARegister;
-    calculateOutgoingCFAInfo(SuccInfo);
-    updateSuccCFAInfo(SuccInfo);
+    calculateOutgoingCFIInfo(*Succ);
+    updateSuccCFIInfo(*Succ);
   }
 }
 
 bool CFIInstrInserter::insertCFIInstrs(MachineFunction &MF) {
-
-  const struct MBBCFAInfo *PrevMBBInfo = &MBBVector[MF.front().getNumber()];
-  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+  const MBBCFIInfo *PrevMBBInfo = &MBBVector[MF.front().getNumber()];
   bool InsertedCFIInstr = false;
 
   for (MachineBasicBlock &MBB : MF) {
     // Skip the first MBB in a function
-    if (MBB.getNumber() == MF.front().getNumber()) continue;
+    if (MBB.getNumber() == MF.front().getNumber())
+      continue;
 
-    const struct MBBCFAInfo& MBBInfo = MBBVector[MBB.getNumber()];
-    auto MBBI = MBBInfo.MBB->begin();
-    DebugLoc DL = MBBInfo.MBB->findDebugLoc(MBBI);
+    const MBBCFIInfo &MBBInfo = MBBVector[MBB.getNumber()];
+    auto MBBI = MBB.begin();
 
-    if (PrevMBBInfo->OutgoingCFAOffset != MBBInfo.IncomingCFAOffset) {
-      // If both outgoing offset and register of a previous block don't match
-      // incoming offset and register of this block, add a def_cfa instruction
-      // with the correct offset and register for this block.
-      if (PrevMBBInfo->OutgoingCFARegister != MBBInfo.IncomingCFARegister) {
-        unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfa(
-            nullptr, MBBInfo.IncomingCFARegister, getCorrectCFAOffset(&MBB)));
-        BuildMI(*MBBInfo.MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
-            .addCFIIndex(CFIIndex);
-        // If outgoing offset of a previous block doesn't match incoming offset
-        // of this block, add a def_cfa_offset instruction with the correct
-        // offset for this block.
-      } else {
-        unsigned CFIIndex =
-            MF.addFrameInst(MCCFIInstruction::createDefCfaOffset(
-                nullptr, getCorrectCFAOffset(&MBB)));
-        BuildMI(*MBBInfo.MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
-            .addCFIIndex(CFIIndex);
-      }
-      InsertedCFIInstr = true;
-      // If outgoing register of a previous block doesn't match incoming
-      // register of this block, add a def_cfa_register instruction with the
-      // correct register for this block.
-    } else if (PrevMBBInfo->OutgoingCFARegister != MBBInfo.IncomingCFARegister) {
-      unsigned CFIIndex =
-          MF.addFrameInst(MCCFIInstruction::createDefCfaRegister(
-              nullptr, MBBInfo.IncomingCFARegister));
-      BuildMI(*MBBInfo.MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
-          .addCFIIndex(CFIIndex);
-      InsertedCFIInstr = true;
-    }
+    InsertedCFIInstr |= insertCFACFIInstrs(MBBInfo, *PrevMBBInfo, MBB, MBBI);
+    InsertedCFIInstr |= insertCSRCFIInstrs(MBBInfo, *PrevMBBInfo, MBB, MBBI);
+
     PrevMBBInfo = &MBBInfo;
   }
   return InsertedCFIInstr;
 }
 
-void CFIInstrInserter::report(const char *msg, MachineBasicBlock &MBB) {
+bool CFIInstrInserter::insertCFACFIInstrs(const MBBCFIInfo &MBBInfo,
+                                          const MBBCFIInfo &PrevMBBInfo,
+                                          MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator &MBBI) {
+  MachineFunction &MF = *MBB.getParent();
+  DebugLoc DL = MBB.findDebugLoc(MBBI);
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+
+  if (PrevMBBInfo.OutgoingCFAOffset != MBBInfo.IncomingCFAOffset) {
+    // If both outgoing offset and register of a previous block don't match
+    // incoming offset and register of this block, add a def_cfa instruction
+    // with the correct offset and register for this block.
+    if (PrevMBBInfo.OutgoingCFARegister != MBBInfo.IncomingCFARegister) {
+      unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfa(
+          nullptr, MBBInfo.IncomingCFARegister, getCorrectCFAOffset(&MBB)));
+      BuildMI(MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
+          .addCFIIndex(CFIIndex);
+      // If outgoing offset of a previous block doesn't match incoming offset
+      // of this block, add a def_cfa_offset instruction with the correct
+      // offset for this block.
+    } else {
+      unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfaOffset(
+          nullptr, getCorrectCFAOffset(&MBB)));
+      BuildMI(MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
+          .addCFIIndex(CFIIndex);
+    }
+    return true;
+    // If outgoing register of a previous block doesn't match incoming
+    // register of this block, add a def_cfa_register instruction with the
+    // correct register for this block.
+  } else if (PrevMBBInfo.OutgoingCFARegister != MBBInfo.IncomingCFARegister) {
+    unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfaRegister(
+        nullptr, MBBInfo.IncomingCFARegister));
+    BuildMI(MBB, MBBI, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
+        .addCFIIndex(CFIIndex);
+    return true;
+  }
+  return false;
+}
+
+bool CFIInstrInserter::insertCSRCFIInstrs(const MBBCFIInfo &MBBInfo,
+                                          const MBBCFIInfo &PrevMBBInfo,
+                                          MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator &MBBI) {}
+
+void CFIInstrInserter::report(const char *msg, const MachineBasicBlock &MBB) {
   errs() << '\n';
   errs() << "*** " << msg << " ***\n"
          << "- function:    " << MBB.getParent()->getName() << "\n";
@@ -256,12 +291,12 @@ void CFIInstrInserter::report(const char *msg, MachineBasicBlock &MBB) {
   errs() << '\n';
 }
 
-unsigned CFIInstrInserter::verify(MachineFunction &MF) {
+unsigned CFIInstrInserter::verify(const MachineFunction &MF) {
   unsigned ErrorNum = 0;
-  for (MachineBasicBlock &CurrMBB : MF) {
-    const struct MBBCFAInfo& CurrMBBInfo = MBBVector[CurrMBB.getNumber()];
-    for (MachineBasicBlock *Pred : CurrMBB.predecessors()) {
-      const struct MBBCFAInfo& PredMBBInfo = MBBVector[Pred->getNumber()];
+  for (const MachineBasicBlock &CurrMBB : MF) {
+    const MBBCFIInfo &CurrMBBInfo = MBBVector[CurrMBB.getNumber()];
+    for (const MachineBasicBlock *Pred : CurrMBB.predecessors()) {
+      const MBBCFIInfo &PredMBBInfo = MBBVector[Pred->getNumber()];
       // Check that outgoing offset values of predecessors match the incoming
       // offset value of CurrMBB
       if (PredMBBInfo.OutgoingCFAOffset != CurrMBBInfo.IncomingCFAOffset) {
@@ -288,8 +323,8 @@ unsigned CFIInstrInserter::verify(MachineFunction &MF) {
       }
     }
 
-    for (MachineBasicBlock *Succ : CurrMBB.successors()) {
-      const struct MBBCFAInfo& SuccMBBInfo = MBBVector[Succ->getNumber()];
+    for (const MachineBasicBlock *Succ : CurrMBB.successors()) {
+      const MBBCFIInfo &SuccMBBInfo = MBBVector[Succ->getNumber()];
       // Check that incoming offset values of successors match the outgoing
       // offset value of CurrMBB
       if (SuccMBBInfo.IncomingCFAOffset != CurrMBBInfo.OutgoingCFAOffset) {

@@ -153,9 +153,9 @@ body:             |
 # not cover the whole BB.
 #
 # CHECKDBG-LABEL: ********** EMITTING LIVE DEBUG VARIABLES **********
-# CHECKDBG-NEXT: !"argc,5"        [0B;0e):0 Loc0=%EDI
+# CHECKDBG-NEXT: !"argc,5"        [0B;0e):0 Loc0=%edi
 # CHECKDBG-NEXT:         [0B;0e):0 BB#0-160B
-# CHECKDBG-NEXT: !"argv,5"        [0B;0e):0 Loc0=%RSI
+# CHECKDBG-NEXT: !"argv,5"        [0B;0e):0 Loc0=%rsi
 # CHECKDBG-NEXT:         [0B;0e):0 BB#0-160B
 # CHECKDBG-NEXT: !"a0,7"  [16r;64r):0 Loc0=%vreg2
 # CHECKDBG-NEXT:         [16r;64r):0 BB#0-160B

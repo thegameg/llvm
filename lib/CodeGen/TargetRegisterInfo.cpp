@@ -94,7 +94,7 @@ Printable printReg(unsigned Reg, const TargetRegisterInfo *TRI,
     else if (TargetRegisterInfo::isVirtualRegister(Reg))
       OS << "%vreg" << TargetRegisterInfo::virtReg2Index(Reg);
     else if (TRI && Reg < TRI->getNumRegs())
-      OS << '%' << TRI->getName(Reg);
+      OS << '%' << StringRef(TRI->getName(Reg)).lower();
     else
       OS << "%physreg" << Reg;
     if (SubIdx) {

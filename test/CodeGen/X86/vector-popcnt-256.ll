@@ -43,9 +43,9 @@ define <4 x i64> @testv4i64(<4 x i64> %in) nounwind {
 ;
 ; AVX512VPOPCNTDQ-LABEL: testv4i64:
 ; AVX512VPOPCNTDQ:       # BB#0:
-; AVX512VPOPCNTDQ-NEXT:    # kill: %YMM0<def> %YMM0<kill> %ZMM0<def>
+; AVX512VPOPCNTDQ-NEXT:    # kill: %ymm0<def> %ymm0<kill> %zmm0<def>
 ; AVX512VPOPCNTDQ-NEXT:    vpopcntq %zmm0, %zmm0
-; AVX512VPOPCNTDQ-NEXT:    # kill: %YMM0<def> %YMM0<kill> %ZMM0<kill>
+; AVX512VPOPCNTDQ-NEXT:    # kill: %ymm0<def> %ymm0<kill> %zmm0<kill>
 ; AVX512VPOPCNTDQ-NEXT:    retq
   %out = call <4 x i64> @llvm.ctpop.v4i64(<4 x i64> %in)
   ret <4 x i64> %out
@@ -103,9 +103,9 @@ define <8 x i32> @testv8i32(<8 x i32> %in) nounwind {
 ;
 ; AVX512VPOPCNTDQ-LABEL: testv8i32:
 ; AVX512VPOPCNTDQ:       # BB#0:
-; AVX512VPOPCNTDQ-NEXT:    # kill: %YMM0<def> %YMM0<kill> %ZMM0<def>
+; AVX512VPOPCNTDQ-NEXT:    # kill: %ymm0<def> %ymm0<kill> %zmm0<def>
 ; AVX512VPOPCNTDQ-NEXT:    vpopcntd %zmm0, %zmm0
-; AVX512VPOPCNTDQ-NEXT:    # kill: %YMM0<def> %YMM0<kill> %ZMM0<kill>
+; AVX512VPOPCNTDQ-NEXT:    # kill: %ymm0<def> %ymm0<kill> %zmm0<kill>
 ; AVX512VPOPCNTDQ-NEXT:    retq
   %out = call <8 x i32> @llvm.ctpop.v8i32(<8 x i32> %in)
   ret <8 x i32> %out

@@ -208,7 +208,7 @@ define i16 @test_reduce_v8i16(<8 x i16> %a0) {
 ; X86-SSE-NEXT:    psrld $16, %xmm1
 ; X86-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X86-SSE-NEXT:    movd %xmm1, %eax
-; X86-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-SSE-NEXT:    retl
 ;
 ; X86-AVX-LABEL: test_reduce_v8i16:
@@ -220,7 +220,7 @@ define i16 @test_reduce_v8i16(<8 x i16> %a0) {
 ; X86-AVX-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X86-AVX-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X86-AVX-NEXT:    vmovd %xmm0, %eax
-; X86-AVX-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-AVX-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-AVX-NEXT:    retl
 ;
 ; X64-SSE-LABEL: test_reduce_v8i16:
@@ -233,7 +233,7 @@ define i16 @test_reduce_v8i16(<8 x i16> %a0) {
 ; X64-SSE-NEXT:    psrld $16, %xmm1
 ; X64-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X64-SSE-NEXT:    movd %xmm1, %eax
-; X64-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-SSE-NEXT:    retq
 ;
 ; X64-AVX-LABEL: test_reduce_v8i16:
@@ -245,7 +245,7 @@ define i16 @test_reduce_v8i16(<8 x i16> %a0) {
 ; X64-AVX-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X64-AVX-NEXT:    vmovd %xmm0, %eax
-; X64-AVX-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX-NEXT:    retq
   %1  = shufflevector <8 x i16> %a0, <8 x i16> undef, <8 x i32> <i32 4, i32 5, i32 6, i32 7, i32 undef, i32 undef, i32 undef, i32 undef>
   %2  = icmp slt <8 x i16> %a0, %1
@@ -290,7 +290,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X86-SSE2-NEXT:    pandn %xmm0, %xmm1
 ; X86-SSE2-NEXT:    por %xmm2, %xmm1
 ; X86-SSE2-NEXT:    movd %xmm1, %eax
-; X86-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE2-NEXT:    retl
 ;
 ; X86-SSE42-LABEL: test_reduce_v16i8:
@@ -306,7 +306,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X86-SSE42-NEXT:    psrlw $8, %xmm0
 ; X86-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X86-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X86-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE42-NEXT:    retl
 ;
 ; X86-AVX-LABEL: test_reduce_v16i8:
@@ -320,7 +320,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X86-AVX-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X86-AVX-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X86-AVX-NEXT:    vpextrb $0, %xmm0, %eax
-; X86-AVX-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-AVX-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-AVX-NEXT:    retl
 ;
 ; X64-SSE2-LABEL: test_reduce_v16i8:
@@ -352,7 +352,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X64-SSE2-NEXT:    pandn %xmm0, %xmm1
 ; X64-SSE2-NEXT:    por %xmm2, %xmm1
 ; X64-SSE2-NEXT:    movd %xmm1, %eax
-; X64-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE2-NEXT:    retq
 ;
 ; X64-SSE42-LABEL: test_reduce_v16i8:
@@ -368,7 +368,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X64-SSE42-NEXT:    psrlw $8, %xmm0
 ; X64-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X64-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X64-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE42-NEXT:    retq
 ;
 ; X64-AVX-LABEL: test_reduce_v16i8:
@@ -382,7 +382,7 @@ define i8 @test_reduce_v16i8(<16 x i8> %a0) {
 ; X64-AVX-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X64-AVX-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX-NEXT:    retq
   %1  = shufflevector <16 x i8> %a0, <16 x i8> undef, <16 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
   %2  = icmp slt <16 x i8> %a0, %1
@@ -734,7 +734,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X86-SSE-NEXT:    psrld $16, %xmm1
 ; X86-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X86-SSE-NEXT:    movd %xmm1, %eax
-; X86-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-SSE-NEXT:    retl
 ;
 ; X86-AVX1-LABEL: test_reduce_v16i16:
@@ -748,7 +748,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X86-AVX1-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X86-AVX1-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X86-AVX1-NEXT:    vmovd %xmm0, %eax
-; X86-AVX1-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-AVX1-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-AVX1-NEXT:    vzeroupper
 ; X86-AVX1-NEXT:    retl
 ;
@@ -763,7 +763,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X86-AVX2-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X86-AVX2-NEXT:    vpminsw %ymm1, %ymm0, %ymm0
 ; X86-AVX2-NEXT:    vmovd %xmm0, %eax
-; X86-AVX2-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-AVX2-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-AVX2-NEXT:    vzeroupper
 ; X86-AVX2-NEXT:    retl
 ;
@@ -778,7 +778,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X64-SSE-NEXT:    psrld $16, %xmm1
 ; X64-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X64-SSE-NEXT:    movd %xmm1, %eax
-; X64-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-SSE-NEXT:    retq
 ;
 ; X64-AVX1-LABEL: test_reduce_v16i16:
@@ -792,7 +792,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X64-AVX1-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX1-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X64-AVX1-NEXT:    vmovd %xmm0, %eax
-; X64-AVX1-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX1-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX1-NEXT:    vzeroupper
 ; X64-AVX1-NEXT:    retq
 ;
@@ -807,7 +807,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X64-AVX2-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX2-NEXT:    vpminsw %ymm1, %ymm0, %ymm0
 ; X64-AVX2-NEXT:    vmovd %xmm0, %eax
-; X64-AVX2-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX2-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -822,7 +822,7 @@ define i16 @test_reduce_v16i16(<16 x i16> %a0) {
 ; X64-AVX512-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX512-NEXT:    vpminsw %ymm1, %ymm0, %ymm0
 ; X64-AVX512-NEXT:    vmovd %xmm0, %eax
-; X64-AVX512-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX512-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX512-NEXT:    vzeroupper
 ; X64-AVX512-NEXT:    retq
   %1  = shufflevector <16 x i16> %a0, <16 x i16> undef, <16 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
@@ -876,7 +876,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X86-SSE2-NEXT:    pandn %xmm0, %xmm2
 ; X86-SSE2-NEXT:    por %xmm1, %xmm2
 ; X86-SSE2-NEXT:    movd %xmm2, %eax
-; X86-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE2-NEXT:    retl
 ;
 ; X86-SSE42-LABEL: test_reduce_v32i8:
@@ -893,7 +893,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X86-SSE42-NEXT:    psrlw $8, %xmm0
 ; X86-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X86-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X86-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE42-NEXT:    retl
 ;
 ; X86-AVX1-LABEL: test_reduce_v32i8:
@@ -909,7 +909,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X86-AVX1-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X86-AVX1-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X86-AVX1-NEXT:    vpextrb $0, %xmm0, %eax
-; X86-AVX1-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-AVX1-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-AVX1-NEXT:    vzeroupper
 ; X86-AVX1-NEXT:    retl
 ;
@@ -926,7 +926,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X86-AVX2-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X86-AVX2-NEXT:    vpminsb %ymm1, %ymm0, %ymm0
 ; X86-AVX2-NEXT:    vpextrb $0, %xmm0, %eax
-; X86-AVX2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-AVX2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-AVX2-NEXT:    vzeroupper
 ; X86-AVX2-NEXT:    retl
 ;
@@ -964,7 +964,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X64-SSE2-NEXT:    pandn %xmm0, %xmm2
 ; X64-SSE2-NEXT:    por %xmm1, %xmm2
 ; X64-SSE2-NEXT:    movd %xmm2, %eax
-; X64-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE2-NEXT:    retq
 ;
 ; X64-SSE42-LABEL: test_reduce_v32i8:
@@ -981,7 +981,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X64-SSE42-NEXT:    psrlw $8, %xmm0
 ; X64-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X64-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X64-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE42-NEXT:    retq
 ;
 ; X64-AVX1-LABEL: test_reduce_v32i8:
@@ -997,7 +997,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X64-AVX1-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX1-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X64-AVX1-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX1-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX1-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX1-NEXT:    vzeroupper
 ; X64-AVX1-NEXT:    retq
 ;
@@ -1014,7 +1014,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X64-AVX2-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX2-NEXT:    vpminsb %ymm1, %ymm0, %ymm0
 ; X64-AVX2-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -1031,7 +1031,7 @@ define i8 @test_reduce_v32i8(<32 x i8> %a0) {
 ; X64-AVX512-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX512-NEXT:    vpminsb %ymm1, %ymm0, %ymm0
 ; X64-AVX512-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX512-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX512-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX512-NEXT:    vzeroupper
 ; X64-AVX512-NEXT:    retq
   %1  = shufflevector <32 x i8> %a0, <32 x i8> undef, <32 x i32> <i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
@@ -1526,7 +1526,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X86-SSE-NEXT:    psrld $16, %xmm1
 ; X86-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X86-SSE-NEXT:    movd %xmm1, %eax
-; X86-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-SSE-NEXT:    retl
 ;
 ; X86-AVX1-LABEL: test_reduce_v32i16:
@@ -1543,7 +1543,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X86-AVX1-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X86-AVX1-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X86-AVX1-NEXT:    vmovd %xmm0, %eax
-; X86-AVX1-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-AVX1-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-AVX1-NEXT:    vzeroupper
 ; X86-AVX1-NEXT:    retl
 ;
@@ -1559,7 +1559,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X86-AVX2-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X86-AVX2-NEXT:    vpminsw %ymm1, %ymm0, %ymm0
 ; X86-AVX2-NEXT:    vmovd %xmm0, %eax
-; X86-AVX2-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X86-AVX2-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X86-AVX2-NEXT:    vzeroupper
 ; X86-AVX2-NEXT:    retl
 ;
@@ -1576,7 +1576,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X64-SSE-NEXT:    psrld $16, %xmm1
 ; X64-SSE-NEXT:    pminsw %xmm0, %xmm1
 ; X64-SSE-NEXT:    movd %xmm1, %eax
-; X64-SSE-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-SSE-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-SSE-NEXT:    retq
 ;
 ; X64-AVX1-LABEL: test_reduce_v32i16:
@@ -1593,7 +1593,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X64-AVX1-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX1-NEXT:    vpminsw %xmm1, %xmm0, %xmm0
 ; X64-AVX1-NEXT:    vmovd %xmm0, %eax
-; X64-AVX1-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX1-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX1-NEXT:    vzeroupper
 ; X64-AVX1-NEXT:    retq
 ;
@@ -1609,7 +1609,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X64-AVX2-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX2-NEXT:    vpminsw %ymm1, %ymm0, %ymm0
 ; X64-AVX2-NEXT:    vmovd %xmm0, %eax
-; X64-AVX2-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX2-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -1626,7 +1626,7 @@ define i16 @test_reduce_v32i16(<32 x i16> %a0) {
 ; X64-AVX512-NEXT:    vpsrld $16, %xmm0, %xmm1
 ; X64-AVX512-NEXT:    vpminsw %zmm1, %zmm0, %zmm0
 ; X64-AVX512-NEXT:    vmovd %xmm0, %eax
-; X64-AVX512-NEXT:    ## kill: %AX<def> %AX<kill> %EAX<kill>
+; X64-AVX512-NEXT:    ## kill: %ax<def> %ax<kill> %eax<kill>
 ; X64-AVX512-NEXT:    vzeroupper
 ; X64-AVX512-NEXT:    retq
   %1  = shufflevector <32 x i16> %a0, <32 x i16> undef, <32 x i32> <i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
@@ -1693,7 +1693,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X86-SSE2-NEXT:    pandn %xmm0, %xmm1
 ; X86-SSE2-NEXT:    por %xmm2, %xmm1
 ; X86-SSE2-NEXT:    movd %xmm1, %eax
-; X86-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE2-NEXT:    retl
 ;
 ; X86-SSE42-LABEL: test_reduce_v64i8:
@@ -1712,7 +1712,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X86-SSE42-NEXT:    psrlw $8, %xmm0
 ; X86-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X86-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X86-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-SSE42-NEXT:    retl
 ;
 ; X86-AVX1-LABEL: test_reduce_v64i8:
@@ -1731,7 +1731,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X86-AVX1-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X86-AVX1-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X86-AVX1-NEXT:    vpextrb $0, %xmm0, %eax
-; X86-AVX1-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-AVX1-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-AVX1-NEXT:    vzeroupper
 ; X86-AVX1-NEXT:    retl
 ;
@@ -1749,7 +1749,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X86-AVX2-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X86-AVX2-NEXT:    vpminsb %ymm1, %ymm0, %ymm0
 ; X86-AVX2-NEXT:    vpextrb $0, %xmm0, %eax
-; X86-AVX2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X86-AVX2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X86-AVX2-NEXT:    vzeroupper
 ; X86-AVX2-NEXT:    retl
 ;
@@ -1797,7 +1797,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X64-SSE2-NEXT:    pandn %xmm0, %xmm1
 ; X64-SSE2-NEXT:    por %xmm2, %xmm1
 ; X64-SSE2-NEXT:    movd %xmm1, %eax
-; X64-SSE2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE2-NEXT:    retq
 ;
 ; X64-SSE42-LABEL: test_reduce_v64i8:
@@ -1816,7 +1816,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X64-SSE42-NEXT:    psrlw $8, %xmm0
 ; X64-SSE42-NEXT:    pminsb %xmm1, %xmm0
 ; X64-SSE42-NEXT:    pextrb $0, %xmm0, %eax
-; X64-SSE42-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-SSE42-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-SSE42-NEXT:    retq
 ;
 ; X64-AVX1-LABEL: test_reduce_v64i8:
@@ -1835,7 +1835,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X64-AVX1-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX1-NEXT:    vpminsb %xmm1, %xmm0, %xmm0
 ; X64-AVX1-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX1-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX1-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX1-NEXT:    vzeroupper
 ; X64-AVX1-NEXT:    retq
 ;
@@ -1853,7 +1853,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X64-AVX2-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX2-NEXT:    vpminsb %ymm1, %ymm0, %ymm0
 ; X64-AVX2-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX2-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX2-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX2-NEXT:    vzeroupper
 ; X64-AVX2-NEXT:    retq
 ;
@@ -1872,7 +1872,7 @@ define i8 @test_reduce_v64i8(<64 x i8> %a0) {
 ; X64-AVX512-NEXT:    vpsrlw $8, %xmm0, %xmm1
 ; X64-AVX512-NEXT:    vpminsb %zmm1, %zmm0, %zmm0
 ; X64-AVX512-NEXT:    vpextrb $0, %xmm0, %eax
-; X64-AVX512-NEXT:    ## kill: %AL<def> %AL<kill> %EAX<kill>
+; X64-AVX512-NEXT:    ## kill: %al<def> %al<kill> %eax<kill>
 ; X64-AVX512-NEXT:    vzeroupper
 ; X64-AVX512-NEXT:    retq
   %1  = shufflevector <64 x i8> %a0, <64 x i8> undef, <64 x i32> <i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>

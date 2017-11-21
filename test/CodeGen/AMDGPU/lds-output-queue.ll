@@ -46,20 +46,20 @@ declare void @llvm.r600.group.barrier() nounwind convergent
 ;
 ; The instruction selection phase will generate ISA that looks like this:
 ; %OQAP = LDS_READ_RET
-; %vreg0 = MOV %OQAP
-; %vreg1 = VTX_READ_32
-; %vreg2 = ADD_INT %vreg1, %vreg0
+; %0 = MOV %OQAP
+; %1 = VTX_READ_32
+; %2 = ADD_INT %1, %0
 ;
 ; The bottom scheduler will schedule the two ALU instructions first:
 ;
 ; UNSCHEDULED:
 ; %OQAP = LDS_READ_RET
-; %vreg1 = VTX_READ_32
+; %1 = VTX_READ_32
 ;
 ; SCHEDULED:
 ;
 ; vreg0 = MOV %OQAP
-; vreg2 = ADD_INT %vreg1, %vreg2
+; vreg2 = ADD_INT %1, %2
 ;
 ; The lack of proper aliasing results in the local memory read (LDS_READ_RET)
 ; to consider the global memory read (VTX_READ_32) has a chain dependency, so
@@ -69,10 +69,10 @@ declare void @llvm.r600.group.barrier() nounwind convergent
 ; Alu clause:
 ; %OQAP = LDS_READ_RET
 ; VTX clause:
-; %vreg1 = VTX_READ_32
+; %1 = VTX_READ_32
 ; Alu clause:
 ; vreg0 = MOV %OQAP
-; vreg2 = ADD_INT %vreg1, %vreg2
+; vreg2 = ADD_INT %1, %2
 ;
 ; This is an illegal program because the OQAP def and use know occur in
 ; different ALU clauses.

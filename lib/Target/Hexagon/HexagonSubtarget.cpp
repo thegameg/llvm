@@ -234,12 +234,12 @@ void HexagonSubtarget::CallMutation::apply(ScheduleDAGInstrs *DAG) {
       const MachineInstr *MI = DAG->SUnits[su].getInstr();
       if (MI->isCopy() && (MI->readsRegister(Hexagon::R0, &TRI) ||
                            MI->readsRegister(Hexagon::V0, &TRI)))  {
-        // %vregX = COPY %R0
+        // %X = COPY %R0
         VRegHoldingRet = MI->getOperand(0).getReg();
         RetRegister = MI->getOperand(1).getReg();
         LastUseOfRet = nullptr;
       } else if (VRegHoldingRet && MI->readsVirtualRegister(VRegHoldingRet))
-        // <use of %vregX>
+        // <use of %X>
         LastUseOfRet = &DAG->SUnits[su];
       else if (LastUseOfRet && MI->definesRegister(RetRegister, &TRI))
         // %R0 = ...

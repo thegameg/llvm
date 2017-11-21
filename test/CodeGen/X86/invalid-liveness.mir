@@ -9,7 +9,7 @@
 # on all paths; In this example a def for vreg0 is missing when jumping from
 # bb.0 to bb.3.
 #
-# CHECK: Use of %vreg0 does not have a corresponding definition on every path
+# CHECK: Use of %0 does not have a corresponding definition on every path
 # CHECK: ERROR: Use not jointly dominated by defs.
 name: func
 registers:

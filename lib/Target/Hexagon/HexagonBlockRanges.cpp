@@ -368,7 +368,7 @@ void HexagonBlockRanges::computeInitialLiveRanges(InstrIndexMap &IndexMap,
       }
     }
     // Defs and clobbers can overlap, e.g.
-    // %D0<def,dead> = COPY %vreg5, %R0<imp-def>, %R1<imp-def>
+    // %D0<def,dead> = COPY %5, %R0<imp-def>, %R1<imp-def>
     for (RegisterRef R : Defs)
       Clobbers.erase(R);
 

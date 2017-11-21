@@ -7,9 +7,9 @@ target triple = "hexagon"
 ; UNREACHABLE executed at llvm/lib/Target/Hexagon/HexagonInstrInfo.cpp:615!
 ; This happened because after unrolling a loop with a ldd_circ instruction we
 ; would have several TFCR and ldd_circ instruction sequences.
-; %vreg0 (CRRegs) = TFCR %vreg0 (IntRegs)
+; %0 (CRRegs) = TFCR %0 (IntRegs)
 ;                 = ldd_circ( , , vreg0)
-; %vreg1 (CRRegs) = TFCR %vreg1 (IntRegs)
+; %1 (CRRegs) = TFCR %1 (IntRegs)
 ;                 = ldd_circ( , , vreg0)
 ; The scheduler would move the CRRegs to the top of the loop. The allocator
 ; would try to spill the CRRegs after running out of them. We don't have code to

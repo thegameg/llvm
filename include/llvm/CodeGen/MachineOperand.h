@@ -641,8 +641,7 @@ public:
                                   bool isKill = false, bool isDead = false,
                                   bool isUndef = false,
                                   bool isEarlyClobber = false,
-                                  unsigned SubReg = 0,
-                                  bool isDebug = false,
+                                  unsigned SubReg = 0, bool isDebug = false,
                                   bool isInternalRead = false) {
     assert(!(isDead && !isDef) && "Dead flag on non-def");
     assert(!(isKill && isDef) && "Kill flag on def");
@@ -690,8 +689,7 @@ public:
     Op.setTargetFlags(TargetFlags);
     return Op;
   }
-  static MachineOperand CreateJTI(unsigned Idx,
-                                  unsigned char TargetFlags = 0) {
+  static MachineOperand CreateJTI(unsigned Idx, unsigned char TargetFlags = 0) {
     MachineOperand Op(MachineOperand::MO_JumpTableIndex);
     Op.setIndex(Idx);
     Op.setTargetFlags(TargetFlags);
@@ -722,12 +720,12 @@ public:
     return Op;
   }
   /// CreateRegMask - Creates a register mask operand referencing Mask.  The
-  /// operand does not take ownership of the memory referenced by Mask, it must
-  /// remain valid for the lifetime of the operand.
+  /// operand does not take ownership of the memory referenced by Mask, it
+  /// must remain valid for the lifetime of the operand.
   ///
-  /// A RegMask operand represents a set of non-clobbered physical registers on
-  /// an instruction that clobbers many registers, typically a call.  The bit
-  /// mask has a bit set for each physreg that is preserved by this
+  /// A RegMask operand represents a set of non-clobbered physical registers
+  /// on an instruction that clobbers many registers, typically a call.  The
+  /// bit mask has a bit set for each physreg that is preserved by this
   /// instruction, as described in the documentation for
   /// TargetRegisterInfo::getCallPreservedMask().
   ///
@@ -780,6 +778,7 @@ public:
 
   friend class MachineInstr;
   friend class MachineRegisterInfo;
+
 private:
   void removeRegFromUses();
 
@@ -795,9 +794,9 @@ private:
   // Methods for handling register use/def lists.
   //===--------------------------------------------------------------------===//
 
-  /// isOnRegUseList - Return true if this operand is on a register use/def list
-  /// or false if not.  This can only be called for register operands that are
-  /// part of a machine instruction.
+  /// isOnRegUseList - Return true if this operand is on a register use/def
+  /// list or false if not.  This can only be called for register operands
+  /// that are part of a machine instruction.
   bool isOnRegUseList() const {
     assert(isReg() && "Can only add reg operand to use lists");
     return Contents.Reg.Prev != nullptr;
@@ -826,14 +825,14 @@ template <> struct DenseMapInfo<MachineOperand> {
   }
 };
 
-inline raw_ostream &operator<<(raw_ostream &OS, const MachineOperand& MO) {
+inline raw_ostream &operator<<(raw_ostream &OS, const MachineOperand &MO) {
   MO.print(OS, nullptr);
   return OS;
 }
 
-  // See friend declaration above. This additional declaration is required in
-  // order to compile LLVM with IBM xlC compiler.
-  hash_code hash_value(const MachineOperand &MO);
-} // End llvm namespace
+// See friend declaration above. This additional declaration is required in
+// order to compile LLVM with IBM xlC compiler.
+hash_code hash_value(const MachineOperand &MO);
+} // namespace llvm
 
 #endif

@@ -1137,7 +1137,7 @@ struct VirtReg2IndexFunctor {
 /// Prints virtual and physical registers with or without a TRI instance.
 ///
 /// The format is:
-///   %noreg          - NoRegister
+///   _               - NoRegister
 ///   %vreg5          - a virtual register.
 ///   %vreg5:sub_8bit - a virtual register with sub-register index (with TRI).
 ///   %eax            - a physical register

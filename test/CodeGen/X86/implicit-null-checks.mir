@@ -1297,16 +1297,16 @@ body:             |
     liveins: %rdi, %rsi
 
     %rsp = frame-setup SUB64ri8 %rsp, 8, implicit-def dead %eflags
-    MOV32mr %rsp, 1, %noreg, 0, %noreg, %esi :: (store 4 into %stack.0)
+    MOV32mr %rsp, 1, _, 0, _, %esi :: (store 4 into %stack.0)
     TEST64rr %rdi, %rdi, implicit-def %eflags
     JE_1 %bb.2.is_null, implicit killed %eflags
 
   bb.1.not_null:
     liveins: %rdi, %rsi
 
-    %r14d = MOV32rm %rsp, 1, %noreg, 0, %noreg :: (load 4 from %stack.0)
-    MOV64mr %rsp, 1, %noreg, 0, %noreg, %rdi :: (store 8 into %stack.0)
-    %edi = MOV32rm %rdi, 1, %noreg, 8, %noreg :: (load 4 from %ir.ptr)
+    %r14d = MOV32rm %rsp, 1, _, 0, _ :: (load 4 from %stack.0)
+    MOV64mr %rsp, 1, _, 0, _, %rdi :: (store 8 into %stack.0)
+    %edi = MOV32rm %rdi, 1, _, 8, _ :: (load 4 from %ir.ptr)
     %eax = MOV32rr %edi
     RETQ %eax
 

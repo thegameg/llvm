@@ -191,7 +191,7 @@ bool FixupBWInstPass::runOnMachineFunction(MachineFunction &MF) {
 ///   BB#2: derived from LLVM BB %if.then
 ///   Live Ins: %RDI
 ///   Predecessors according to CFG: BB#0
-///   %AX<def> = MOV16rm %RDI<kill>, 1, %noreg, 0, %noreg, %EAX<imp-def>; mem:LD2[%p]
+///   %AX<def> = MOV16rm %RDI<kill>, 1, _, 0, _, %EAX<imp-def>; mem:LD2[%p]
 ///                                             No %EAX<imp-use>
 ///   Successors according to CFG: BB#3(?%)
 ///

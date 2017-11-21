@@ -424,7 +424,7 @@ namespace {
     if (P.Rs.Reg != 0)
       OS << printReg(P.Rs.Reg, &P.HRI, P.Rs.Sub);
     else
-      OS << "noreg";
+      OS << '_';
     return OS;
   }
 

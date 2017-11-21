@@ -2373,8 +2373,6 @@ bool MIParser::parseInstrName(StringRef InstrName, unsigned &OpCode) {
 void MIParser::initNames2Regs() {
   if (!Names2Regs.empty())
     return;
-  // The '%noreg' register is the register 0.
-  Names2Regs.insert(std::make_pair("noreg", 0));
   const auto *TRI = MF.getSubtarget().getRegisterInfo();
   assert(TRI && "Expected target register info");
   for (unsigned I = 0, E = TRI->getNumRegs(); I < E; ++I) {

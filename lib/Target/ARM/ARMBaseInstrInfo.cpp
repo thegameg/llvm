@@ -1650,7 +1650,7 @@ bool ARMBaseInstrInfo::produceSameValue(const MachineInstr &MI0,
     }
 
     for (unsigned i = 3, e = MI0.getNumOperands(); i != e; ++i) {
-      // %vreg12<def> = PICLDR %vreg11, 0, pred:14, pred:%noreg
+      // %vreg12<def> = PICLDR %vreg11, 0, pred:14, pred:_
       const MachineOperand &MO0 = MI0.getOperand(i);
       const MachineOperand &MO1 = MI1.getOperand(i);
       if (!MO0.isIdenticalTo(MO1))
@@ -2072,7 +2072,7 @@ ARMBaseInstrInfo::optimizeSelect(MachineInstr &MI,
     NewMI.addImm(CondCode);
   NewMI.add(MI.getOperand(4));
 
-  // DefMI is not the -S version that sets CPSR, so add an optional %noreg.
+  // DefMI is not the -S version that sets CPSR, so add an optional NoRegister.
   if (NewMI->hasOptionalDef())
     NewMI.add(condCodeOp());
 
@@ -4540,14 +4540,14 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
     // Make sure we've got NEON instructions.
     assert(Subtarget.hasNEON() && "VORRd requires NEON");
 
-    // Source instruction is %DDst = VMOVD %DSrc, 14, %noreg (; implicits)
+    // Source instruction is %DDst = VMOVD %DSrc, 14, _ (; implicits)
     DstReg = MI.getOperand(0).getReg();
     SrcReg = MI.getOperand(1).getReg();
 
     for (unsigned i = MI.getDesc().getNumOperands(); i; --i)
       MI.RemoveOperand(i - 1);
 
-    // Change to a %DDst = VORRd %DSrc, %DSrc, 14, %noreg (; implicits)
+    // Change to a %DDst = VORRd %DSrc, %DSrc, 14, _ (; implicits)
     MI.setDesc(get(ARM::VORRd));
     MIB.addReg(DstReg, RegState::Define)
         .addReg(SrcReg)
@@ -4559,7 +4559,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
       break;
     assert(!isPredicated(MI) && "Cannot predicate a VGETLN");
 
-    // Source instruction is %RDst = VMOVRS %SSrc, 14, %noreg (; implicits)
+    // Source instruction is %RDst = VMOVRS %SSrc, 14, _ (; implicits)
     DstReg = MI.getOperand(0).getReg();
     SrcReg = MI.getOperand(1).getReg();
 
@@ -4568,7 +4568,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
 
     DReg = getCorrespondingDRegAndLane(TRI, SrcReg, Lane);
 
-    // Convert to %RDst = VGETLNi32 %DSrc, Lane, 14, %noreg (; imps)
+    // Convert to %RDst = VGETLNi32 %DSrc, Lane, 14, _ (; imps)
     // Note that DSrc has been widened and the other lane may be undef, which
     // contaminates the entire register.
     MI.setDesc(get(ARM::VGETLNi32));
@@ -4586,7 +4586,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
       break;
     assert(!isPredicated(MI) && "Cannot predicate a VSETLN");
 
-    // Source instruction is %SDst = VMOVSR %RSrc, 14, %noreg (; implicits)
+    // Source instruction is %SDst = VMOVSR %RSrc, 14, _ (; implicits)
     DstReg = MI.getOperand(0).getReg();
     SrcReg = MI.getOperand(1).getReg();
 
@@ -4599,7 +4599,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
     for (unsigned i = MI.getDesc().getNumOperands(); i; --i)
       MI.RemoveOperand(i - 1);
 
-    // Convert to %DDst = VSETLNi32 %DDst, %RSrc, Lane, 14, %noreg (; imps)
+    // Convert to %DDst = VSETLNi32 %DDst, %RSrc, Lane, 14, _ (; imps)
     // Again DDst may be undefined at the beginning of this instruction.
     MI.setDesc(get(ARM::VSETLNi32));
     MIB.addReg(DReg, RegState::Define)
@@ -4619,7 +4619,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
       if (Domain != ExeNEON)
         break;
 
-      // Source instruction is %SDst = VMOVS %SSrc, 14, %noreg (; implicits)
+      // Source instruction is %SDst = VMOVS %SSrc, 14, _ (; implicits)
       DstReg = MI.getOperand(0).getReg();
       SrcReg = MI.getOperand(1).getReg();
 
@@ -4636,7 +4636,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
 
       if (DSrc == DDst) {
         // Destination can be:
-        //     %DDst = VDUPLN32d %DDst, Lane, 14, %noreg (; implicits)
+        //     %DDst = VDUPLN32d %DDst, Lane, 14, _ (; implicits)
         MI.setDesc(get(ARM::VDUPLN32d));
         MIB.addReg(DDst, RegState::Define)
             .addReg(DDst, getUndefRegState(!MI.readsRegister(DDst, TRI)))
@@ -4663,7 +4663,7 @@ void ARMBaseInstrInfo::setExecutionDomain(MachineInstr &MI,
       //     vmov s1, s2 -> vext.32 d0, d0, d0, #1  vext.32 d0, d0, d1, #1
       //
       // Pattern of the MachineInstrs is:
-      //     %DDst = VEXTd32 %DSrc1, %DSrc2, Lane, 14, %noreg (;implicits)
+      //     %DDst = VEXTd32 %DSrc1, %DSrc2, Lane, 14, _ (;implicits)
       MachineInstrBuilder NewMIB;
       NewMIB = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), get(ARM::VEXTd32),
                        DDst);

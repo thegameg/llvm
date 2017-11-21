@@ -1013,9 +1013,10 @@ void UserValue::rewriteLocations(VirtRegMap &VRM, const TargetRegisterInfo &TRI,
       unsigned VirtReg = Loc.getReg();
       if (VRM.isAssignedReg(VirtReg) &&
           TargetRegisterInfo::isPhysicalRegister(VRM.getPhys(VirtReg))) {
-        // This can create a %noreg operand in rare cases when the sub-register
-        // index is no longer available. That means the user value is in a
-        // non-existent sub-register, and %noreg is exactly what we want.
+        // This can create a NoRegister operand in rare cases when the
+        // sub-register index is no longer available. That means the user value
+        // is in a non-existent sub-register, and NoRegister is exactly what we
+        // want.
         Loc.substPhysReg(VRM.getPhys(VirtReg), TRI);
       } else if (VRM.getStackSlot(VirtReg) != VirtRegMap::NO_STACK_SLOT) {
         // FIXME: Translate SubIdx to a stackslot offset.

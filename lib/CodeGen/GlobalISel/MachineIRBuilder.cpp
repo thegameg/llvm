@@ -135,7 +135,7 @@ MachineInstrBuilder MachineIRBuilder::buildConstDbgValue(const Constant &C,
   } else if (auto *CFP = dyn_cast<ConstantFP>(&C)) {
     MIB.addFPImm(CFP);
   } else {
-    // Insert %noreg if we didn't find a usable constant and had to drop it.
+    // Insert NoRegister if we didn't find a usable constant and had to drop it.
     MIB.addReg(0U);
   }
 

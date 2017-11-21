@@ -394,9 +394,7 @@ Example:
 
     %0
 
-The null registers are represented using an underscore ('``_``'). They can also be
-represented using a '``%noreg``' named register, although the former syntax
-is preferred.
+The null registers are represented using an underscore ('``_``').
 
 .. _machine-operands:
 

@@ -8,5 +8,5 @@ name:            f
 body:             |
   bb.0:
     liveins: %r0, %r3
-    %r0, %r3 = LDRD %r0, %noreg, 8, 14, %noreg
+    %r0, %r3 = LDRD %r0, _, 8, 14, _
 ...

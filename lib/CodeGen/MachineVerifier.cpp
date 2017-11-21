@@ -471,7 +471,7 @@ void MachineVerifier::report(const char *msg, const MachineFunction *MF) {
 void MachineVerifier::report(const char *msg, const MachineBasicBlock *MBB) {
   assert(MBB);
   report(msg, MBB->getParent());
-  errs() << "- basic block: BB#" << MBB->getNumber()
+  errs() << "- basic block: %bb." << MBB->getNumber()
       << ' ' << MBB->getName()
       << " (" << (const void*)MBB << ')';
   if (Indexes)
@@ -619,7 +619,7 @@ MachineVerifier::visitMachineBasicBlockBefore(const MachineBasicBlock *MBB) {
       report("MBB has successor that isn't part of the function.", MBB);
     if (!MBBInfoMap[*I].Preds.count(MBB)) {
       report("Inconsistent CFG", MBB);
-      errs() << "MBB is not in the predecessor list of the successor BB#"
+      errs() << "MBB is not in the predecessor list of the successor %bb."
           << (*I)->getNumber() << ".\n";
     }
   }
@@ -631,7 +631,7 @@ MachineVerifier::visitMachineBasicBlockBefore(const MachineBasicBlock *MBB) {
       report("MBB has predecessor that isn't part of the function.", MBB);
     if (!MBBInfoMap[*I].Succs.count(MBB)) {
       report("Inconsistent CFG", MBB);
-      errs() << "MBB is not in the successor list of the predecessor BB#"
+      errs() << "MBB is not in the successor list of the predecessor %bb."
           << (*I)->getNumber() << ".\n";
     }
   }
@@ -1628,7 +1628,7 @@ void MachineVerifier::checkPHIOps(const MachineBasicBlock *MBB) {
            PrE = MBB->pred_end(); PrI != PrE; ++PrI) {
       if (!seen.count(*PrI)) {
         report("Missing PHI operand", &BBI);
-        errs() << "BB#" << (*PrI)->getNumber()
+        errs() << "%bb." << (*PrI)->getNumber()
             << " is a predecessor according to the CFG.\n";
       }
     }
@@ -2009,7 +2009,7 @@ void MachineVerifier::verifyLiveRangeSegment(const LiveRange &LR,
         report("Register not marked live out of predecessor", *PI);
         report_context(LR, Reg, LaneMask);
         report_context(*VNI);
-        errs() << " live into BB#" << MFI->getNumber()
+        errs() << " live into %bb." << MFI->getNumber()
                << '@' << LiveInts->getMBBStartIdx(&*MFI) << ", not live before "
                << PEnd << '\n';
         continue;
@@ -2019,9 +2019,9 @@ void MachineVerifier::verifyLiveRangeSegment(const LiveRange &LR,
       if (!IsPHI && PVNI != VNI) {
         report("Different value live out of predecessor", *PI);
         report_context(LR, Reg, LaneMask);
-        errs() << "Valno #" << PVNI->id << " live out of BB#"
+        errs() << "Valno #" << PVNI->id << " live out of %bb."
                << (*PI)->getNumber() << '@' << PEnd << "\nValno #" << VNI->id
-               << " live into BB#" << MFI->getNumber() << '@'
+               << " live into %bb." << MFI->getNumber() << '@'
                << LiveInts->getMBBStartIdx(&*MFI) << '\n';
       }
     }
@@ -2172,10 +2172,10 @@ void MachineVerifier::verifyStackFrame() {
           (SPState[(*I)->getNumber()].ExitValue != BBState.EntryValue ||
            SPState[(*I)->getNumber()].ExitIsSetup != BBState.EntryIsSetup)) {
         report("The exit stack state of a predecessor is inconsistent.", MBB);
-        errs() << "Predecessor BB#" << (*I)->getNumber() << " has exit state ("
+        errs() << "Predecessor %bb." << (*I)->getNumber() << " has exit state ("
             << SPState[(*I)->getNumber()].ExitValue << ", "
             << SPState[(*I)->getNumber()].ExitIsSetup
-            << "), while BB#" << MBB->getNumber() << " has entry state ("
+            << "), while %bb." << MBB->getNumber() << " has entry state ("
             << BBState.EntryValue << ", " << BBState.EntryIsSetup << ").\n";
       }
     }
@@ -2188,10 +2188,10 @@ void MachineVerifier::verifyStackFrame() {
           (SPState[(*I)->getNumber()].EntryValue != BBState.ExitValue ||
            SPState[(*I)->getNumber()].EntryIsSetup != BBState.ExitIsSetup)) {
         report("The entry stack state of a successor is inconsistent.", MBB);
-        errs() << "Successor BB#" << (*I)->getNumber() << " has entry state ("
+        errs() << "Successor %bb." << (*I)->getNumber() << " has entry state ("
             << SPState[(*I)->getNumber()].EntryValue << ", "
             << SPState[(*I)->getNumber()].EntryIsSetup
-            << "), while BB#" << MBB->getNumber() << " has exit state ("
+            << "), while %bb." << MBB->getNumber() << " has exit state ("
             << BBState.ExitValue << ", " << BBState.ExitIsSetup << ").\n";
       }
     }

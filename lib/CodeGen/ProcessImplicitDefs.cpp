@@ -154,7 +154,7 @@ bool ProcessImplicitDefs::runOnMachineFunction(MachineFunction &MF) {
     if (WorkList.empty())
       continue;
 
-    DEBUG(dbgs() << "BB#" << MFI->getNumber() << " has " << WorkList.size()
+    DEBUG(dbgs() << "%bb." << MFI->getNumber() << " has " << WorkList.size()
                  << " implicit defs.\n");
     Changed = true;
 

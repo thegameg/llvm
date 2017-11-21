@@ -323,7 +323,7 @@ bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
       if (bbcnt++ % DebugDiv != DebugMod)
         continue;
       dbgs() << "*** DEBUG scheduling " << Fn.getName()
-             << ":BB#" << MBB.getNumber() << " ***\n";
+             << ":%bb." << MBB.getNumber() << " ***\n";
     }
 #endif
 

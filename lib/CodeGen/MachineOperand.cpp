@@ -432,7 +432,7 @@ void MachineOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
     }
     break;
   case MachineOperand::MO_MachineBasicBlock:
-    OS << "<BB#" << getMBB()->getNumber() << ">";
+    OS << printMBBReference(*getMBB());
     break;
   case MachineOperand::MO_FrameIndex:
     OS << "<fi#" << getIndex() << '>';

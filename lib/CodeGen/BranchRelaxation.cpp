@@ -143,7 +143,7 @@ void BranchRelaxation::verify() {
 LLVM_DUMP_METHOD void BranchRelaxation::dumpBBs() {
   for (auto &MBB : *MF) {
     const BasicBlockInfo &BBI = BlockInfo[MBB.getNumber()];
-    dbgs() << format("BB#%u\toffset=%08x\t", MBB.getNumber(), BBI.Offset)
+    dbgs() << format("%bb.%u\toffset=%08x\t", MBB.getNumber(), BBI.Offset)
            << format("size=%#x\n", BBI.Size);
   }
 }
@@ -288,8 +288,8 @@ bool BranchRelaxation::isBlockInRange(
     return true;
 
   DEBUG(
-    dbgs() << "Out of range branch to destination BB#" << DestBB.getNumber()
-           << " from BB#" << MI.getParent()->getNumber()
+    dbgs() << "Out of range branch to destination %bb." << DestBB.getNumber()
+           << " from %bb." << MI.getParent()->getNumber()
            << " to " << DestOffset
            << " offset " << DestOffset - BrOffset
            << '\t' << MI
@@ -366,8 +366,8 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
   // just created), so we can invert the condition.
   MachineBasicBlock &NextBB = *std::next(MachineFunction::iterator(MBB));
 
-  DEBUG(dbgs() << "  Insert B to BB#" << TBB->getNumber()
-               << ", invert condition and change dest. to BB#"
+  DEBUG(dbgs() << "  Insert B to %bb." << TBB->getNumber()
+               << ", invert condition and change dest. to %bb."
                << NextBB.getNumber() << '\n');
 
   unsigned &MBBSize = BlockInfo[MBB->getNumber()].Size;

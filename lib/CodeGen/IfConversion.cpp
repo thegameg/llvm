@@ -408,7 +408,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
         if ((isFalse && DisableSimpleF) || (!isFalse && DisableSimple)) break;
         DEBUG(dbgs() << "Ifcvt (Simple" << (Kind == ICSimpleFalse ?
                                             " false" : "")
-                     << "): BB#" << BBI.BB->getNumber() << " ("
+                     << "): %bb." << BBI.BB->getNumber() << " ("
                      << ((Kind == ICSimpleFalse)
                          ? BBI.FalseBB->getNumber()
                          : BBI.TrueBB->getNumber()) << ") ");
@@ -435,7 +435,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
           DEBUG(dbgs() << " false");
         if (isRev)
           DEBUG(dbgs() << " rev");
-        DEBUG(dbgs() << "): BB#" << BBI.BB->getNumber() << " (T:"
+        DEBUG(dbgs() << "): %bb." << BBI.BB->getNumber() << " (T:"
                      << BBI.TrueBB->getNumber() << ",F:"
                      << BBI.FalseBB->getNumber() << ") ");
         RetVal = IfConvertTriangle(BBI, Kind);
@@ -453,7 +453,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
       }
       case ICDiamond:
         if (DisableDiamond) break;
-        DEBUG(dbgs() << "Ifcvt (Diamond): BB#" << BBI.BB->getNumber() << " (T:"
+        DEBUG(dbgs() << "Ifcvt (Diamond): %bb." << BBI.BB->getNumber() << " (T:"
                      << BBI.TrueBB->getNumber() << ",F:"
                      << BBI.FalseBB->getNumber() << ") ");
         RetVal = IfConvertDiamond(BBI, Kind, NumDups, NumDups2,
@@ -464,7 +464,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ICForkedDiamond:
         if (DisableForkedDiamond) break;
-        DEBUG(dbgs() << "Ifcvt (Forked Diamond): BB#"
+        DEBUG(dbgs() << "Ifcvt (Forked Diamond): %bb."
                      << BBI.BB->getNumber() << " (T:"
                      << BBI.TrueBB->getNumber() << ",F:"
                      << BBI.FalseBB->getNumber() << ") ");

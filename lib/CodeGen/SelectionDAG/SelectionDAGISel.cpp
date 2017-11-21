@@ -730,7 +730,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     BlockName =
         (MF->getName() + ":" + FuncInfo->MBB->getBasicBlock()->getName()).str();
   }
-  DEBUG(dbgs() << "Initial selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Initial selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   if (ViewDAGCombine1 && MatchFilterBB)
@@ -743,7 +743,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     CurDAG->Combine(BeforeLegalizeTypes, AA, OptLevel);
   }
 
-  DEBUG(dbgs() << "Optimized lowered selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Optimized lowered selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   // Second step, hack on the DAG until it only uses operations and types that
@@ -758,7 +758,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     Changed = CurDAG->LegalizeTypes();
   }
 
-  DEBUG(dbgs() << "Type-legalized selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Type-legalized selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   // Only allow creation of legal node types.
@@ -775,7 +775,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
       CurDAG->Combine(AfterLegalizeTypes, AA, OptLevel);
     }
 
-    DEBUG(dbgs() << "Optimized type-legalized selection DAG: BB#" << BlockNumber
+    DEBUG(dbgs() << "Optimized type-legalized selection DAG: %bb." << BlockNumber
           << " '" << BlockName << "'\n"; CurDAG->dump());
   }
 
@@ -786,7 +786,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
   }
 
   if (Changed) {
-    DEBUG(dbgs() << "Vector-legalized selection DAG: BB#" << BlockNumber
+    DEBUG(dbgs() << "Vector-legalized selection DAG: %bb." << BlockNumber
           << " '" << BlockName << "'\n"; CurDAG->dump());
 
     {
@@ -795,7 +795,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
       CurDAG->LegalizeTypes();
     }
 
-    DEBUG(dbgs() << "Vector/type-legalized selection DAG: BB#" << BlockNumber
+    DEBUG(dbgs() << "Vector/type-legalized selection DAG: %bb." << BlockNumber
           << " '" << BlockName << "'\n"; CurDAG->dump());
 
     if (ViewDAGCombineLT && MatchFilterBB)
@@ -808,7 +808,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
       CurDAG->Combine(AfterLegalizeVectorOps, AA, OptLevel);
     }
 
-    DEBUG(dbgs() << "Optimized vector-legalized selection DAG: BB#"
+    DEBUG(dbgs() << "Optimized vector-legalized selection DAG: %bb."
           << BlockNumber << " '" << BlockName << "'\n"; CurDAG->dump());
   }
 
@@ -821,7 +821,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     CurDAG->Legalize();
   }
 
-  DEBUG(dbgs() << "Legalized selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Legalized selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   if (ViewDAGCombine2 && MatchFilterBB)
@@ -834,7 +834,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     CurDAG->Combine(AfterLegalizeDAG, AA, OptLevel);
   }
 
-  DEBUG(dbgs() << "Optimized legalized selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Optimized legalized selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   if (OptLevel != CodeGenOpt::None)
@@ -851,7 +851,7 @@ void SelectionDAGISel::CodeGenAndEmitDAG() {
     DoInstructionSelection();
   }
 
-  DEBUG(dbgs() << "Selected selection DAG: BB#" << BlockNumber
+  DEBUG(dbgs() << "Selected selection DAG: %bb." << BlockNumber
         << " '" << BlockName << "'\n"; CurDAG->dump());
 
   if (ViewSchedDAGs && MatchFilterBB)
@@ -919,7 +919,7 @@ public:
 } // end anonymous namespace
 
 void SelectionDAGISel::DoInstructionSelection() {
-  DEBUG(dbgs() << "===== Instruction selection begins: BB#"
+  DEBUG(dbgs() << "===== Instruction selection begins: %bb."
         << FuncInfo->MBB->getNumber()
         << " '" << FuncInfo->MBB->getName() << "'\n");
 

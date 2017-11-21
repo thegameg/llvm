@@ -98,7 +98,7 @@ static cl::opt<unsigned> MISchedCutoff("misched-cutoff", cl::Hidden,
 static cl::opt<std::string> SchedOnlyFunc("misched-only-func", cl::Hidden,
   cl::desc("Only schedule this function"));
 static cl::opt<unsigned> SchedOnlyBlock("misched-only-block", cl::Hidden,
-  cl::desc("Only schedule this MBB#"));
+  cl::desc("Only schedule this %bb."));
 #else
 static bool ViewMISchedDAGs = false;
 #endif // NDEBUG
@@ -549,14 +549,14 @@ void MachineSchedulerBase::scheduleRegions(ScheduleDAGInstrs &Scheduler,
       }
       DEBUG(dbgs() << "********** MI Scheduling **********\n");
       DEBUG(dbgs() << MF->getName()
-            << ":BB#" << MBB->getNumber() << " " << MBB->getName()
+            << ":%bb." << MBB->getNumber() << " " << MBB->getName()
             << "\n  From: " << *I << "    To: ";
             if (RegionEnd != MBB->end()) dbgs() << *RegionEnd;
             else dbgs() << "End";
             dbgs() << " RegionInstrs: " << NumRegionInstrs << '\n');
       if (DumpCriticalPathLength) {
         errs() << MF->getName();
-        errs() << ":BB# " << MBB->getNumber();
+        errs() << ":%bb. " << MBB->getNumber();
         errs() << " " << MBB->getName() << " \n";
       }
 
@@ -824,7 +824,7 @@ void ScheduleDAGMI::schedule() {
 
   DEBUG({
       unsigned BBNum = begin()->getParent()->getNumber();
-      dbgs() << "*** Final schedule for BB#" << BBNum << " ***\n";
+      dbgs() << "*** Final schedule for %bb." << BBNum << " ***\n";
       dumpSchedule();
       dbgs() << '\n';
     });
@@ -1262,7 +1262,7 @@ void ScheduleDAGMILive::schedule() {
 
   DEBUG({
       unsigned BBNum = begin()->getParent()->getNumber();
-      dbgs() << "*** Final schedule for BB#" << BBNum << " ***\n";
+      dbgs() << "*** Final schedule for %bb." << BBNum << " ***\n";
       dumpSchedule();
       dbgs() << '\n';
     });

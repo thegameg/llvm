@@ -593,8 +593,8 @@ bool PHIElimination::SplitPHIEdges(MachineFunction &MF,
       if (!ShouldSplit && !NoPhiElimLiveOutEarlyExit)
         continue;
       if (ShouldSplit) {
-        DEBUG(dbgs() << printReg(Reg) << " live-out before critical edge BB#"
-                     << PreMBB->getNumber() << " -> BB#" << MBB.getNumber()
+        DEBUG(dbgs() << printReg(Reg) << " live-out before critical edge %bb."
+                     << PreMBB->getNumber() << " -> %bb." << MBB.getNumber()
                      << ": " << *BBI);
       }
 

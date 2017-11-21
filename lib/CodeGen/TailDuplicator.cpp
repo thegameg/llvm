@@ -111,8 +111,8 @@ static void VerifyPHIs(MachineFunction &MF, bool CheckExtra) {
           }
         }
         if (!Found) {
-          dbgs() << "Malformed PHI in BB#" << MBB->getNumber() << ": " << *MI;
-          dbgs() << "  missing input from predecessor BB#"
+          dbgs() << "Malformed PHI in %bb." << MBB->getNumber() << ": " << *MI;
+          dbgs() << "  missing input from predecessor %bb."
                  << PredBB->getNumber() << '\n';
           llvm_unreachable(nullptr);
         }
@@ -121,15 +121,15 @@ static void VerifyPHIs(MachineFunction &MF, bool CheckExtra) {
       for (unsigned i = 1, e = MI->getNumOperands(); i != e; i += 2) {
         MachineBasicBlock *PHIBB = MI->getOperand(i + 1).getMBB();
         if (CheckExtra && !Preds.count(PHIBB)) {
-          dbgs() << "Warning: malformed PHI in BB#" << MBB->getNumber() << ": "
+          dbgs() << "Warning: malformed PHI in %bb." << MBB->getNumber() << ": "
                  << *MI;
-          dbgs() << "  extra input from predecessor BB#" << PHIBB->getNumber()
+          dbgs() << "  extra input from predecessor %bb." << PHIBB->getNumber()
                  << '\n';
           llvm_unreachable(nullptr);
         }
         if (PHIBB->getNumber() < 0) {
-          dbgs() << "Malformed PHI in BB#" << MBB->getNumber() << ": " << *MI;
-          dbgs() << "  non-existing BB#" << PHIBB->getNumber() << '\n';
+          dbgs() << "Malformed PHI in %bb." << MBB->getNumber() << ": " << *MI;
+          dbgs() << "  non-existing %bb." << PHIBB->getNumber() << '\n';
           llvm_unreachable(nullptr);
         }
       }
@@ -783,7 +783,7 @@ bool TailDuplicator::tailDuplicate(bool IsSimple, MachineBasicBlock *TailBB,
                                    MachineBasicBlock *ForcedLayoutPred,
                                    SmallVectorImpl<MachineBasicBlock *> &TDBBs,
                                    SmallVectorImpl<MachineInstr *> &Copies) {
-  DEBUG(dbgs() << "\n*** Tail-duplicating BB#" << TailBB->getNumber() << '\n');
+  DEBUG(dbgs() << "\n*** Tail-duplicating %bb." << TailBB->getNumber() << '\n');
 
   DenseSet<unsigned> UsedByPhi;
   getRegsUsedByPHIs(*TailBB, &UsedByPhi);

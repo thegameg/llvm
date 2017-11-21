@@ -729,7 +729,7 @@ SlotIndex SplitEditor::enterIntvAtEnd(MachineBasicBlock &MBB) {
   assert(OpenIdx && "openIntv not called before enterIntvAtEnd");
   SlotIndex End = LIS.getMBBEndIdx(&MBB);
   SlotIndex Last = End.getPrevSlot();
-  DEBUG(dbgs() << "    enterIntvAtEnd BB#" << MBB.getNumber() << ", " << Last);
+  DEBUG(dbgs() << "    enterIntvAtEnd %bb." << MBB.getNumber() << ", " << Last);
   VNInfo *ParentVNI = Edit->getParent().getVNInfoAt(Last);
   if (!ParentVNI) {
     DEBUG(dbgs() << ": not live\n");
@@ -808,7 +808,7 @@ SlotIndex SplitEditor::leaveIntvBefore(SlotIndex Idx) {
 SlotIndex SplitEditor::leaveIntvAtTop(MachineBasicBlock &MBB) {
   assert(OpenIdx && "openIntv not called before leaveIntvAtTop");
   SlotIndex Start = LIS.getMBBStartIdx(&MBB);
-  DEBUG(dbgs() << "    leaveIntvAtTop BB#" << MBB.getNumber() << ", " << Start);
+  DEBUG(dbgs() << "    leaveIntvAtTop %bb." << MBB.getNumber() << ", " << Start);
 
   VNInfo *ParentVNI = Edit->getParent().getVNInfoAt(Start);
   if (!ParentVNI) {
@@ -906,14 +906,14 @@ SplitEditor::findShallowDominator(MachineBasicBlock *MBB,
     // MBB isn't in a loop, it doesn't get any better.  All dominators have a
     // higher frequency by definition.
     if (!Loop) {
-      DEBUG(dbgs() << "Def in BB#" << DefMBB->getNumber() << " dominates BB#"
+      DEBUG(dbgs() << "Def in %bb." << DefMBB->getNumber() << " dominates %bb."
                    << MBB->getNumber() << " at depth 0\n");
       return MBB;
     }
 
     // We'll never be able to exit the DefLoop.
     if (Loop == DefLoop) {
-      DEBUG(dbgs() << "Def in BB#" << DefMBB->getNumber() << " dominates BB#"
+      DEBUG(dbgs() << "Def in %bb." << DefMBB->getNumber() << " dominates %bb."
                    << MBB->getNumber() << " in the same loop\n");
       return MBB;
     }
@@ -923,7 +923,7 @@ SplitEditor::findShallowDominator(MachineBasicBlock *MBB,
     if (Depth < BestDepth) {
       BestMBB = MBB;
       BestDepth = Depth;
-      DEBUG(dbgs() << "Def in BB#" << DefMBB->getNumber() << " dominates BB#"
+      DEBUG(dbgs() << "Def in %bb." << DefMBB->getNumber() << " dominates %bb."
                    << MBB->getNumber() << " at depth " << Depth << '\n');
     }
 
@@ -1063,7 +1063,7 @@ void SplitEditor::hoistCopies() {
 
     DEBUG(dbgs() << "Multi-mapped complement " << VNI->id << '@' << VNI->def
                  << " for parent " << ParentVNI->id << '@' << ParentVNI->def
-                 << " hoist to BB#" << Dom.first->getNumber() << ' '
+                 << " hoist to %bb." << Dom.first->getNumber() << ' '
                  << Dom.second << '\n');
   }
 
@@ -1173,7 +1173,7 @@ bool SplitEditor::transferValues() {
       if (Start != BlockStart) {
         VNInfo *VNI = LI.extendInBlock(BlockStart, std::min(BlockEnd, End));
         assert(VNI && "Missing def for complex mapped value");
-        DEBUG(dbgs() << ':' << VNI->id << "*BB#" << MBB->getNumber());
+        DEBUG(dbgs() << ':' << VNI->id << "*%bb." << MBB->getNumber());
         // MBB has its own def. Is it also live-out?
         if (BlockEnd <= End)
           LRC.setLiveOutValue(&*MBB, VNI);
@@ -1186,7 +1186,7 @@ bool SplitEditor::transferValues() {
       // Handle the live-in blocks covered by [Start;End).
       assert(Start <= BlockStart && "Expected live-in block");
       while (BlockStart < End) {
-        DEBUG(dbgs() << ">BB#" << MBB->getNumber());
+        DEBUG(dbgs() << ">%bb." << MBB->getNumber());
         BlockEnd = LIS.getMBBEndIdx(&*MBB);
         if (BlockStart == ParentVNI->def) {
           // This block has the def of a parent PHI, so it isn't live-in.
@@ -1329,7 +1329,7 @@ void SplitEditor::rewriteAssigned(bool ExtendRanges) {
     unsigned RegIdx = RegAssign.lookup(Idx);
     LiveInterval &LI = LIS.getInterval(Edit->get(RegIdx));
     MO.setReg(LI.reg);
-    DEBUG(dbgs() << "  rewr BB#" << MI->getParent()->getNumber() << '\t'
+    DEBUG(dbgs() << "  rewr %bb." << MI->getParent()->getNumber() << '\t'
                  << Idx << ':' << RegIdx << '\t' << *MI);
 
     // Extend liveness to Idx if the instruction reads reg.
@@ -1563,7 +1563,7 @@ void SplitEditor::splitLiveThroughBlock(unsigned MBBNum,
   SlotIndex Start, Stop;
   std::tie(Start, Stop) = LIS.getSlotIndexes()->getMBBRange(MBBNum);
 
-  DEBUG(dbgs() << "BB#" << MBBNum << " [" << Start << ';' << Stop
+  DEBUG(dbgs() << "%bb." << MBBNum << " [" << Start << ';' << Stop
                << ") intf " << LeaveBefore << '-' << EnterAfter
                << ", live-through " << IntvIn << " -> " << IntvOut);
 
@@ -1665,7 +1665,7 @@ void SplitEditor::splitRegInBlock(const SplitAnalysis::BlockInfo &BI,
   SlotIndex Start, Stop;
   std::tie(Start, Stop) = LIS.getSlotIndexes()->getMBBRange(BI.MBB);
 
-  DEBUG(dbgs() << "BB#" << BI.MBB->getNumber() << " [" << Start << ';' << Stop
+  DEBUG(dbgs() << "%bb." << BI.MBB->getNumber() << " [" << Start << ';' << Stop
                << "), uses " << BI.FirstInstr << '-' << BI.LastInstr
                << ", reg-in " << IntvIn << ", leave before " << LeaveBefore
                << (BI.LiveOut ? ", stack-out" : ", killed in block"));
@@ -1757,7 +1757,7 @@ void SplitEditor::splitRegOutBlock(const SplitAnalysis::BlockInfo &BI,
   SlotIndex Start, Stop;
   std::tie(Start, Stop) = LIS.getSlotIndexes()->getMBBRange(BI.MBB);
 
-  DEBUG(dbgs() << "BB#" << BI.MBB->getNumber() << " [" << Start << ';' << Stop
+  DEBUG(dbgs() << "%bb." << BI.MBB->getNumber() << " [" << Start << ';' << Stop
                << "), uses " << BI.FirstInstr << '-' << BI.LastInstr
                << ", reg-out " << IntvOut << ", enter after " << EnterAfter
                << (BI.LiveIn ? ", stack-in" : ", defined in block"));

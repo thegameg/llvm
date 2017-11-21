@@ -1850,8 +1850,8 @@ MachineBasicBlock *AMDGPUMachineCFGStructurizer::createIfBlock(
   if (!CodeBBEnd->isSuccessor(MergeBB))
     CodeBBEnd->addSuccessor(MergeBB);
 
-  DEBUG(dbgs() << "Moved MBB#" << CodeBBStart->getNumber() << " through MBB#"
-               << CodeBBEnd->getNumber() << "\n");
+  DEBUG(dbgs() << "Moved " << printMBBReference(*CodeBBStart) << " through "
+               << printMBBReference(*CodeBBEnd) << "\n");
 
   // If we have a single predecessor we can find a reasonable debug location
   MachineBasicBlock *SinglePred =

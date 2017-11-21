@@ -613,8 +613,8 @@ ProfitableToMerge(MachineBasicBlock *MBB1, MachineBasicBlock *MBB2,
   CommonTailLen = ComputeCommonTailLength(MBB1, MBB2, I1, I2);
   if (CommonTailLen == 0)
     return false;
-  DEBUG(dbgs() << "Common tail length of BB#" << MBB1->getNumber()
-               << " and BB#" << MBB2->getNumber() << " is " << CommonTailLen
+  DEBUG(dbgs() << "Common tail length of %bb." << MBB1->getNumber()
+               << " and %bb." << MBB2->getNumber() << " is " << CommonTailLen
                << '\n');
 
   // It's almost always profitable to merge any number of non-terminator
@@ -770,7 +770,7 @@ bool BranchFolder::CreateCommonTailOnlyBlock(MachineBasicBlock *&PredBB,
     SameTails[commonTailIndex].getTailStartPos();
   MachineBasicBlock *MBB = SameTails[commonTailIndex].getBlock();
 
-  DEBUG(dbgs() << "\nSplitting BB#" << MBB->getNumber() << ", size "
+  DEBUG(dbgs() << "\nSplitting %bb." << MBB->getNumber() << ", size "
                << maxCommonTailLength);
 
   // If the split block unconditionally falls-thru to SuccBB, it will be
@@ -921,13 +921,13 @@ bool BranchFolder::TryTailMergeBlocks(MachineBasicBlock *SuccBB,
 
   DEBUG(dbgs() << "\nTryTailMergeBlocks: ";
         for (unsigned i = 0, e = MergePotentials.size(); i != e; ++i)
-          dbgs() << "BB#" << MergePotentials[i].getBlock()->getNumber()
+          dbgs() << "%bb." << MergePotentials[i].getBlock()->getNumber()
                  << (i == e-1 ? "" : ", ");
         dbgs() << "\n";
         if (SuccBB) {
-          dbgs() << "  with successor BB#" << SuccBB->getNumber() << '\n';
+          dbgs() << "  with successor %bb." << SuccBB->getNumber() << '\n';
           if (PredBB)
-            dbgs() << "  which has fall-through from BB#"
+            dbgs() << "  which has fall-through from %bb."
                    << PredBB->getNumber() << "\n";
         }
         dbgs() << "Looking for common tails of at least "
@@ -1013,12 +1013,12 @@ bool BranchFolder::TryTailMergeBlocks(MachineBasicBlock *SuccBB,
 
     // MBB is common tail.  Adjust all other BB's to jump to this one.
     // Traversal must be forwards so erases work.
-    DEBUG(dbgs() << "\nUsing common tail in BB#" << MBB->getNumber()
+    DEBUG(dbgs() << "\nUsing common tail in %bb." << MBB->getNumber()
                  << " for ");
     for (unsigned int i=0, e = SameTails.size(); i != e; ++i) {
       if (commonTailIndex == i)
         continue;
-      DEBUG(dbgs() << "BB#" << SameTails[i].getBlock()->getNumber()
+      DEBUG(dbgs() << "%bb." << SameTails[i].getBlock()->getNumber()
                    << (i == e-1 ? "" : ", "));
       // Hack the end off BB i, making it jump to BB commonTailIndex instead.
       replaceTailWithBranchTo(SameTails[i].getTailStartPos(), *MBB);

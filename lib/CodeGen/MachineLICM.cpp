@@ -563,7 +563,7 @@ void MachineLICM::HoistPostRA(MachineInstr *MI, unsigned Def) {
 
   // Now move the instructions to the predecessor, inserting it before any
   // terminator instructions.
-  DEBUG(dbgs() << "Hoisting to BB#" << Preheader->getNumber() << " from BB#"
+  DEBUG(dbgs() << "Hoisting to %bb." << Preheader->getNumber() << " from %bb."
                << MI->getParent()->getNumber() << ": " << *MI);
 
   // Splice the instruction to the preheader.
@@ -601,14 +601,14 @@ bool MachineLICM::IsGuaranteedToExecute(MachineBasicBlock *BB) {
 }
 
 void MachineLICM::EnterScope(MachineBasicBlock *MBB) {
-  DEBUG(dbgs() << "Entering BB#" << MBB->getNumber() << '\n');
+  DEBUG(dbgs() << "Entering %bb." << MBB->getNumber() << '\n');
 
   // Remember livein register pressure.
   BackTrace.push_back(RegPressure);
 }
 
 void MachineLICM::ExitScope(MachineBasicBlock *MBB) {
-  DEBUG(dbgs() << "Exiting BB#" << MBB->getNumber() << '\n');
+  DEBUG(dbgs() << "Exiting %bb." << MBB->getNumber() << '\n');
   BackTrace.pop_back();
 }
 
@@ -1336,9 +1336,9 @@ bool MachineLICM::Hoist(MachineInstr *MI, MachineBasicBlock *Preheader) {
   DEBUG({
       dbgs() << "Hoisting " << *MI;
       if (MI->getParent()->getBasicBlock())
-        dbgs() << " from BB#" << MI->getParent()->getNumber();
+        dbgs() << " from %bb." << MI->getParent()->getNumber();
       if (Preheader->getBasicBlock())
-        dbgs() << " to BB#" << Preheader->getNumber();
+        dbgs() << " to %bb." << Preheader->getNumber();
       dbgs() << "\n";
     });
 

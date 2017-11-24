@@ -5,7 +5,7 @@
 
 ; Machine LICM should hoist the mrs into the loop preheader.
 ; CHECK-LABEL: @test1
-; CHECK: BB#1:
+; CHECK: %bb.1:
 ; CHECK:   mrs x[[BASE:[0-9]+]], TPIDR_EL0
 ; CHECK:   add x[[REG1:[0-9]+]], x[[BASE]], :tprel_hi12:x
 ; CHECK:   add x[[REG2:[0-9]+]], x[[REG1]], :tprel_lo12_nc:x

@@ -233,13 +233,13 @@ attributes #0 = { nounwind }
 ; was lowered to:
 ;
 ; The first two cmovs got expanded to:
-; BB#0:
-;   JL_1 BB#9
-; BB#7:
-;   JG_1 BB#9
-; BB#8:
-; BB#9:
-;   vreg12 = phi(vreg7, BB#8, vreg11, BB#0, vreg12, BB#7)
+; %bb.0:
+;   JL_1 %bb.9
+; %bb.7:
+;   JG_1 %bb.9
+; %bb.8:
+; %bb.9:
+;   vreg12 = phi(vreg7, %bb.8, vreg11, %bb.0, vreg12, %bb.7)
 ;   vreg13 = COPY vreg12
 ; Which was invalid as %12 is not the same value as %13
 

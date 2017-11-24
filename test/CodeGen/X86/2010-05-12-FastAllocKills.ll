@@ -3,18 +3,18 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "x86_64-apple-darwin"
 
 ; This test causes a virtual FP register to be redefined while it is live:
-;BB#5: derived from LLVM BB %bb10
-;    Predecessors according to CFG: BB#4 BB#5
+;%bb.5: derived from LLVM BB %bb10
+;    Predecessors according to CFG: %bb.4 %bb.5
 ;	%reg1024<def> = MOV_Fp8080 %reg1034
 ;	%reg1025<def> = MUL_Fp80m32 %reg1024, %RIP, 1, %reg0, <cp#0>, %reg0; mem:LD4[ConstantPool]
 ;	%reg1034<def> = MOV_Fp8080 %reg1025
 ;	FP_REG_KILL %FP0<imp-def>, %FP1<imp-def>, %FP2<imp-def>, %FP3<imp-def>, %FP4<imp-def>, %FP5<imp-def>, %FP6<imp-def>
-;	JMP_4 <BB#5>
-;    Successors according to CFG: BB#5
+;	JMP_4 %bb.5
+;    Successors according to CFG: %bb.5
 ;
 ; The X86FP pass needs good kill flags, like on %FP0 representing %reg1034:
-;BB#5: derived from LLVM BB %bb10
-;    Predecessors according to CFG: BB#4 BB#5
+;%bb.5: derived from LLVM BB %bb10
+;    Predecessors according to CFG: %bb.4 %bb.5
 ;	%FP0<def> = LD_Fp80m <fi#3>, 1, %reg0, 0, %reg0; mem:LD10[FixedStack3](align=4)
 ;	%FP1<def> = MOV_Fp8080 %FP0<kill>
 ;	%FP2<def> = MUL_Fp80m32 %FP1, %RIP, 1, %reg0, <cp#0>, %reg0; mem:LD4[ConstantPool]
@@ -23,8 +23,8 @@ target triple = "x86_64-apple-darwin"
 ;	ST_FpP80m <fi#4>, 1, %reg0, 0, %reg0, %FP1<kill>; mem:ST10[FixedStack4](align=4)
 ;	ST_FpP80m <fi#5>, 1, %reg0, 0, %reg0, %FP2<kill>; mem:ST10[FixedStack5](align=4)
 ;	FP_REG_KILL %FP0<imp-def>, %FP1<imp-def>, %FP2<imp-def>, %FP3<imp-def>, %FP4<imp-def>, %FP5<imp-def>, %FP6<imp-def>
-;	JMP_4 <BB#5>
-;    Successors according to CFG: BB#5
+;	JMP_4 %bb.5
+;    Successors according to CFG: %bb.5
 
 define fastcc i32 @sqlite3AtoF(i8* %z, double* nocapture %pResult) nounwind ssp {
 entry:

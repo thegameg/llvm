@@ -11,7 +11,7 @@
 
 define signext i32 @test_inesll(i64 %a, i64 %b) {
 ; CHECK-LABEL: test_inesll:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    addic r4, r3, -1
 ; CHECK-NEXT:    subfe r3, r4, r3
@@ -24,7 +24,7 @@ entry:
 
 define signext i32 @test_inesll_sext(i64 %a, i64 %b) {
 ; CHECK-LABEL: test_inesll_sext:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    subfic r3, r3, 0
 ; CHECK-NEXT:    subfe r3, r3, r3
@@ -37,7 +37,7 @@ entry:
 
 define signext i32 @test_inesll_z(i64 %a) {
 ; CHECK-LABEL: test_inesll_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addic r4, r3, -1
 ; CHECK-NEXT:    subfe r3, r4, r3
 ; CHECK-NEXT:    blr
@@ -49,7 +49,7 @@ entry:
 
 define signext i32 @test_inesll_sext_z(i64 %a) {
 ; CHECK-LABEL: test_inesll_sext_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    subfic r3, r3, 0
 ; CHECK-NEXT:    subfe r3, r3, r3
 ; CHECK-NEXT:    blr
@@ -61,7 +61,7 @@ entry:
 
 define void @test_inesll_store(i64 %a, i64 %b) {
 ; CHECK-LABEL: test_inesll_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    ld r12, .LC0@toc@l(r5)
@@ -78,7 +78,7 @@ entry:
 
 define void @test_inesll_sext_store(i64 %a, i64 %b) {
 ; CHECK-LABEL: test_inesll_sext_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    ld r12, .LC0@toc@l(r5)
@@ -95,7 +95,7 @@ entry:
 
 define void @test_inesll_z_store(i64 %a) {
 ; CHECK-LABEL: test_inesll_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    addic r5, r3, -1
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)
@@ -111,7 +111,7 @@ entry:
 
 define void @test_inesll_sext_z_store(i64 %a) {
 ; CHECK-LABEL: test_inesll_sext_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    subfic r3, r3, 0
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)

@@ -13,7 +13,7 @@
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_iequs(i16 zeroext %a, i16 zeroext %b) {
 ; CHECK-LABEL: test_iequs:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -27,7 +27,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_iequs_sext(i16 zeroext %a, i16 zeroext %b) {
 ; CHECK-LABEL: test_iequs_sext:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -42,7 +42,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_iequs_z(i16 zeroext %a) {
 ; CHECK-LABEL: test_iequs_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    blr
@@ -55,7 +55,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_iequs_sext_z(i16 zeroext %a) {
 ; CHECK-LABEL: test_iequs_sext_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    neg r3, r3
@@ -69,7 +69,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_iequs_store(i16 zeroext %a, i16 zeroext %b) {
 ; CHECK-LABEL: test_iequs_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    ld r12, .LC0@toc@l(r5)
@@ -87,7 +87,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_iequs_sext_store(i16 zeroext %a, i16 zeroext %b) {
 ; CHECK-LABEL: test_iequs_sext_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
@@ -106,7 +106,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_iequs_z_store(i16 zeroext %a) {
 ; CHECK-LABEL: test_iequs_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)
@@ -123,7 +123,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_iequs_sext_z_store(i16 zeroext %a) {
 ; CHECK-LABEL: test_iequs_sext_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)

@@ -3,7 +3,7 @@
 
 define void @clflushopt(i8* %p) nounwind {
 ; CHECK-LABEL: clflushopt:
-; CHECK:       ## BB#0:
+; CHECK:       ## %bb.0:
 ; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; CHECK-NEXT:    clflushopt (%eax)
 ; CHECK-NEXT:    retl

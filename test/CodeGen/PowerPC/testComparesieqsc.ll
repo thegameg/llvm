@@ -13,7 +13,7 @@
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_ieqsc(i8 signext %a, i8 signext %b) {
 ; CHECK-LABEL: test_ieqsc:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -27,7 +27,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_ieqsc_sext(i8 signext %a, i8 signext %b) {
 ; CHECK-LABEL: test_ieqsc_sext:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -42,7 +42,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_ieqsc_z(i8 signext %a) {
 ; CHECK-LABEL: test_ieqsc_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    blr
@@ -55,7 +55,7 @@ entry:
 ; Function Attrs: norecurse nounwind readnone
 define signext i32 @test_ieqsc_sext_z(i8 signext %a) {
 ; CHECK-LABEL: test_ieqsc_sext_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    neg r3, r3
@@ -69,7 +69,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_ieqsc_store(i8 signext %a, i8 signext %b) {
 ; CHECK-LABEL: test_ieqsc_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    ld r12, .LC0@toc@l(r5)
@@ -87,7 +87,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_ieqsc_sext_store(i8 signext %a, i8 signext %b) {
 ; CHECK-LABEL: test_ieqsc_sext_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
@@ -106,7 +106,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_ieqsc_z_store(i8 signext %a) {
 ; CHECK-LABEL: test_ieqsc_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)
@@ -123,7 +123,7 @@ entry:
 ; Function Attrs: norecurse nounwind
 define void @test_ieqsc_sext_z_store(i8 signext %a) {
 ; CHECK-LABEL: test_ieqsc_sext_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)

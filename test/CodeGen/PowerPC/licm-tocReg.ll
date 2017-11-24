@@ -65,7 +65,7 @@
 ; Function Attrs: nounwind
 define signext i32 @test(i32 (i32)* nocapture %FP) local_unnamed_addr #0 {
 ; CHECK-LABEL: test:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis 4, 2, .LC0@toc@ha
 ; CHECK-NEXT:    addis 5, 2, .LC1@toc@ha
 ; CHECK-NEXT:    ld 4, .LC0@toc@l(4)
@@ -76,7 +76,7 @@ define signext i32 @test(i32 (i32)* nocapture %FP) local_unnamed_addr #0 {
 ; CHECK-NEXT:    lwz 5, 0(4)
 ; CHECK-NEXT:    mr 4, 3
 ; CHECK-NEXT:    bgt 0, .LBB0_3
-; CHECK-NEXT:  # BB#1:
+; CHECK-NEXT:  # %bb.1:
 ; CHECK-NEXT:    addis 3, 2, .LC0@toc@ha
 ; CHECK-NEXT:    addis 6, 2, .LC1@toc@ha
 ; CHECK-NEXT:    ld 3, .LC0@toc@l(3)

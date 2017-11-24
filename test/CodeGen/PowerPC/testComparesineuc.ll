@@ -10,7 +10,7 @@
 
 define signext i32 @test_ineuc(i8 zeroext %a, i8 zeroext %b) {
 ; CHECK-LABEL: test_ineuc:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -24,7 +24,7 @@ entry:
 
 define signext i32 @test_ineuc_sext(i8 zeroext %a, i8 zeroext %b) {
 ; CHECK-LABEL: test_ineuc_sext:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
@@ -39,7 +39,7 @@ entry:
 
 define signext i32 @test_ineuc_z(i8 zeroext %a) {
 ; CHECK-LABEL: test_ineuc_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    xori r3, r3, 1
@@ -52,7 +52,7 @@ entry:
 
 define signext i32 @test_ineuc_sext_z(i8 zeroext %a) {
 ; CHECK-LABEL: test_ineuc_sext_z:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5
 ; CHECK-NEXT:    xori r3, r3, 1
@@ -66,7 +66,7 @@ entry:
 
 define void @test_ineuc_store(i8 zeroext %a, i8 zeroext %b) {
 ; CHECK-LABEL: test_ineuc_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
@@ -84,7 +84,7 @@ entry:
 
 define void @test_ineuc_sext_store(i8 zeroext %a, i8 zeroext %b) {
 ; CHECK-LABEL: test_ineuc_sext_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    xor r3, r3, r4
 ; CHECK-NEXT:    addis r5, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
@@ -103,7 +103,7 @@ entry:
 
 define void @test_ineuc_z_store(i8 zeroext %a) {
 ; CHECK-LABEL: test_ineuc_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    ld r4, .LC0@toc@l(r4)
@@ -120,7 +120,7 @@ entry:
 
 define void @test_ineuc_sext_z_store(i8 zeroext %a) {
 ; CHECK-LABEL: test_ineuc_sext_z_store:
-; CHECK:       # BB#0: # %entry
+; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    addis r4, r2, .LC0@toc@ha
 ; CHECK-NEXT:    cntlzw r3, r3
 ; CHECK-NEXT:    srwi r3, r3, 5

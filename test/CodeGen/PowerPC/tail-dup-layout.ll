@@ -368,10 +368,10 @@ exit:
 ; CHECK-LABEL: avoidable_test:
 ; CHECK: # %entry
 ; CHECK: andi.
-; CHECK: # %test2
+; CHECK: # %bb.{{[0-9]+}}: # %test2
 ; Make sure then2 falls through from test2
-; CHECK-NOT: # %{{[-_a-zA-Z0-9]+}}
-; CHECK: # %then2
+; CHECK-NOT: # %{{[%.-_a-zA-Z0-9]+}}
+; CHECK: # %bb.{{[0-9]+}}: # %then2
 ; CHECK: rlwinm. {{[0-9]+}}, {{[0-9]+}}, 0, 29, 29
 ; CHECK: # %else1
 ; CHECK: bl a

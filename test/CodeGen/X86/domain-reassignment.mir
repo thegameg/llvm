@@ -103,11 +103,9 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
-fixedStack:
-stack:
-constants:
+fixedStack:      
+stack:           
+constants:       
 body:             |
   ; CHECK-LABEL: name: test_fcmp_storefloat
   ; CHECK: bb.0.entry:
@@ -248,8 +246,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -367,8 +363,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -478,8 +472,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -581,8 +573,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -677,8 +667,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -747,8 +735,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:
@@ -820,8 +806,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:

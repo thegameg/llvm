@@ -125,14 +125,12 @@
 ; CHECK-NEXT:       AArch64 Redundant Copy Elimination
 ; CHECK-NEXT:       A57 FP Anti-dependency breaker
 ; CHECK-NEXT:       PostRA Machine Sink
-; CHECK-NEXT:       MachineDominator Tree Construction
-; CHECK-NEXT:       Machine Natural Loop Construction
-; CHECK-NEXT:       Machine Block Frequency Analysis
-; CHECK-NEXT:       MachinePostDominator Tree Construction
-; CHECK-NEXT:       Shrink Wrapping analysis
 ; CHECK-NEXT:       Lazy Machine Block Frequency Analysis
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       Prologue/Epilogue Insertion & Frame Finalization
+; CHECK-NEXT:       MachineDominator Tree Construction
+; CHECK-NEXT:       Machine Natural Loop Construction
+; CHECK-NEXT:       Machine Block Frequency Analysis
 ; CHECK-NEXT:       Control Flow Optimizer
 ; CHECK-NEXT:       Tail Duplication
 ; CHECK-NEXT:       Machine Copy Propagation Pass

@@ -1026,8 +1026,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1082,8 +1080,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1142,8 +1138,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1203,8 +1197,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1262,8 +1254,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1317,8 +1307,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1367,8 +1355,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1421,8 +1407,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1476,8 +1460,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1530,8 +1512,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1584,8 +1564,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1637,8 +1615,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1690,8 +1666,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1744,8 +1718,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1800,8 +1772,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1859,8 +1829,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1920,8 +1888,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -1984,8 +1950,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2054,8 +2018,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2131,8 +2093,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2211,8 +2171,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2288,8 +2246,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2366,8 +2322,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2443,8 +2397,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2524,8 +2476,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2603,8 +2553,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2679,8 +2627,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2754,8 +2700,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2827,8 +2771,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2902,8 +2844,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -2975,8 +2915,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3059,8 +2997,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
   - { id: 0, name: '', type: default, offset: 0, size: 16, alignment: 16, 
@@ -3160,8 +3096,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3233,8 +3167,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3306,8 +3238,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3379,8 +3309,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3442,8 +3370,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3492,8 +3418,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3539,8 +3463,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3585,8 +3507,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3635,8 +3555,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3690,8 +3608,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3745,8 +3661,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3800,8 +3714,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3851,8 +3763,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -3901,8 +3811,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4007,8 +3915,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4059,8 +3965,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4111,8 +4015,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4160,8 +4062,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4215,8 +4115,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4341,8 +4239,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4396,8 +4292,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4449,8 +4343,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4502,8 +4394,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4555,8 +4445,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4613,8 +4501,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4671,8 +4557,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4733,8 +4617,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4791,8 +4673,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4850,8 +4730,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4907,8 +4785,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -4962,8 +4838,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5015,8 +4889,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5080,8 +4952,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5153,8 +5023,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5228,8 +5096,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5301,8 +5167,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5376,8 +5240,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5449,8 +5311,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5523,8 +5383,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5594,8 +5452,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5665,8 +5521,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5738,8 +5592,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5809,8 +5661,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5882,8 +5732,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5945,8 +5793,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -5997,8 +5843,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6049,8 +5893,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6107,8 +5949,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6168,8 +6008,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6222,8 +6060,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6272,8 +6108,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6319,8 +6153,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       
@@ -6365,8 +6197,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:      
 stack:           
 constants:       

@@ -31,8 +31,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 # CHECK-LABEL: name: test_split_cfg
 # CHECK: bb.0:

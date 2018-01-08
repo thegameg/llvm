@@ -417,8 +417,6 @@ struct MachineFrameInfo {
   bool HasOpaqueSPAdjustment = false;
   bool HasVAStart = false;
   bool HasMustTailInVarArgFunc = false;
-  StringValue SavePoint;
-  StringValue RestorePoint;
 
   bool operator==(const MachineFrameInfo &Other) const {
     return IsFrameAddressTaken == Other.IsFrameAddressTaken &&
@@ -433,8 +431,7 @@ struct MachineFrameInfo {
            MaxCallFrameSize == Other.MaxCallFrameSize &&
            HasOpaqueSPAdjustment == Other.HasOpaqueSPAdjustment &&
            HasVAStart == Other.HasVAStart &&
-           HasMustTailInVarArgFunc == Other.HasMustTailInVarArgFunc &&
-           SavePoint == Other.SavePoint && RestorePoint == Other.RestorePoint;
+           HasMustTailInVarArgFunc == Other.HasMustTailInVarArgFunc;
   }
 };
 
@@ -457,10 +454,6 @@ template <> struct MappingTraits<MachineFrameInfo> {
     YamlIO.mapOptional("hasVAStart", MFI.HasVAStart, false);
     YamlIO.mapOptional("hasMustTailInVarArgFunc", MFI.HasMustTailInVarArgFunc,
                        false);
-    YamlIO.mapOptional("savePoint", MFI.SavePoint,
-                       StringValue()); // Don't print it out when it's empty.
-    YamlIO.mapOptional("restorePoint", MFI.RestorePoint,
-                       StringValue()); // Don't print it out when it's empty.
   }
 };
 

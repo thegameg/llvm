@@ -244,9 +244,6 @@ void WebAssemblyPassConfig::addPostRegAlloc() {
   // virtual registers. Consider removing their restrictions and re-enabling
   // them.
 
-  // Has no asserts of its own, but was not written to handle virtual regs.
-  disablePass(&ShrinkWrapID);
-
   // These functions all require the NoVRegs property.
   disablePass(&MachineCopyPropagationID);
   disablePass(&PostRASchedulerID);

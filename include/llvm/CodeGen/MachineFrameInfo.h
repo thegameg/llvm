@@ -290,11 +290,6 @@ class MachineFrameInfo {
   /// stack objects like arguments so we can't treat them as immutable.
   bool HasTailCall = false;
 
-  /// Not null, if shrink-wrapping found a better place for the prologue.
-  MachineBasicBlock *Save = nullptr;
-  /// Not null, if shrink-wrapping found a better place for the epilogue.
-  MachineBasicBlock *Restore = nullptr;
-
 public:
   explicit MachineFrameInfo(unsigned StackAlignment, bool StackRealignable,
                             bool ForcedRealign)
@@ -695,11 +690,6 @@ public:
   bool isCalleeSavedInfoValid() const { return CSIValid; }
 
   void setCalleeSavedInfoValid(bool v) { CSIValid = v; }
-
-  MachineBasicBlock *getSavePoint() const { return Save; }
-  void setSavePoint(MachineBasicBlock *NewSave) { Save = NewSave; }
-  MachineBasicBlock *getRestorePoint() const { return Restore; }
-  void setRestorePoint(MachineBasicBlock *NewRestore) { Restore = NewRestore; }
 
   /// Return a set of physical registers that are pristine.
   ///

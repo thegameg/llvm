@@ -16,6 +16,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "CSRFIShrinkWrapInfo.h"
+#include "DominatorShrinkWrapper.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -27,6 +29,8 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
+#include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
+#include "llvm/CodeGen/MachineBranchProbabilityInfo.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -36,8 +40,10 @@
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
+#include "llvm/CodeGen/MachinePostDominators.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/CodeGen/ShrinkWrapper.h"
 #include "llvm/CodeGen/StackProtector.h"
 #include "llvm/CodeGen/TargetFrameLowering.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -52,6 +58,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CodeGen.h"
@@ -73,6 +80,10 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "prologepilog"
+
+static cl::opt<cl::boolOrDefault>
+EnableShrinkWrapOpt("enable-shrink-wrap", cl::Hidden,
+                    cl::desc("enable the shrink-wrapping pass"));
 
 using MBBVector = SmallVector<MachineBasicBlock *, 4>;
 
@@ -117,8 +128,13 @@ private:
   // Emit remarks.
   MachineOptimizationRemarkEmitter *ORE = nullptr;
 
+  /// Check if shrink wrapping is enabled for this target and function.
+  static bool isShrinkWrapEnabled(const MachineFunction &MF);
+
   void calculateCallFrameInfo(MachineFunction &Fn);
   void calculateSaveRestoreBlocks(MachineFunction &Fn);
+  void calculateDefaultSaveRestoreBlocks(MachineFunction &Fn);
+  void calculateShrinkWrappedSaveRestoreBlocks(MachineFunction &Fn);
   void spillCalleeSavedRegs(MachineFunction &MF);
 
   void calculateFrameObjectOffsets(MachineFunction &Fn);
@@ -145,6 +161,10 @@ INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_DEPENDENCY(StackProtector)
 INITIALIZE_PASS_DEPENDENCY(MachineOptimizationRemarkEmitterPass)
+INITIALIZE_PASS_DEPENDENCY(MachineBlockFrequencyInfo)
+INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
+INITIALIZE_PASS_DEPENDENCY(MachinePostDominatorTree)
+INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_PASS_END(PEI, DEBUG_TYPE,
                     "Prologue/Epilogue Insertion & Frame Finalization", false,
                     false)
@@ -162,6 +182,14 @@ void PEI::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<MachineDominatorTree>();
   AU.addRequired<StackProtector>();
   AU.addRequired<MachineOptimizationRemarkEmitterPass>();
+
+  // The following passes are necessary for shrink-wrapping, but
+  // shrink-wrapping is only a dependency at -O0. This avoids running the
+  // passes in that case.
+  AU.addUsedIfAvailable<MachineBlockFrequencyInfo>();
+  AU.addUsedIfAvailable<MachineDominatorTree>();
+  AU.addUsedIfAvailable<MachinePostDominatorTree>();
+  AU.addUsedIfAvailable<MachineLoopInfo>();
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
@@ -181,14 +209,14 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
     TRI->requiresFrameIndexReplacementScavenging(Fn);
   ORE = &getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
 
+  // Determine placement of CSR spill/restore code and prolog/epilog code:
+  // place all spills in the entry block, all restores in return blocks.
+  calculateSaveRestoreBlocks(Fn);
+
   // Calculate the MaxCallFrameSize and AdjustsStack variables for the
   // function's frame information. Also eliminates call frame pseudo
   // instructions.
   calculateCallFrameInfo(Fn);
-
-  // Determine placement of CSR spill/restore code and prolog/epilog code:
-  // place all spills in the entry block, all restores in return blocks.
-  calculateSaveRestoreBlocks(Fn);
 
   // Handle CSR spilling and restoring, for targets that need it.
   if (Fn.getTarget().usesPhysRegsForPEI())
@@ -237,9 +265,41 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   delete RS;
   SaveBlocks.clear();
   RestoreBlocks.clear();
-  MFI.setSavePoint(nullptr);
-  MFI.setRestorePoint(nullptr);
   return true;
+}
+
+bool PEI::isShrinkWrapEnabled(const MachineFunction &MF) {
+  if (MF.empty())
+    return false;
+
+  if (MF.getTarget().getOptLevel() == CodeGenOpt::None)
+    return false;
+
+  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+
+  switch (EnableShrinkWrapOpt) {
+  case cl::BOU_UNSET:
+    return TFI->enableShrinkWrapping(MF) &&
+           // Windows with CFI has some limitations that make it impossible
+           // to use shrink-wrapping.
+           !MF.getTarget().getMCAsmInfo()->usesWindowsCFI() &&
+           // Sanitizers look at the value of the stack at the location
+           // of the crash. Since a crash can happen anywhere, the
+           // frame must be lowered before anything else happen for the
+           // sanitizers to be able to get a correct stack frame.
+           !(MF.getFunction().hasFnAttribute(Attribute::SanitizeAddress) ||
+             MF.getFunction().hasFnAttribute(Attribute::SanitizeThread) ||
+             MF.getFunction().hasFnAttribute(Attribute::SanitizeMemory) ||
+             MF.getFunction().hasFnAttribute(Attribute::SanitizeHWAddress));
+  // If EnableShrinkWrap is set, it takes precedence on whatever the
+  // target sets. The rational is that we assume we want to test
+  // something related to shrink-wrapping.
+  case cl::BOU_TRUE:
+    return true;
+  case cl::BOU_FALSE:
+    return false;
+  }
+  llvm_unreachable("Invalid shrink-wrapping state");
 }
 
 /// Calculate the MaxCallFrameSize and AdjustsStack
@@ -296,28 +356,102 @@ void PEI::calculateCallFrameInfo(MachineFunction &Fn) {
   }
 }
 
-/// Compute the sets of entry and return blocks for saving and restoring
-/// callee-saved registers, and placing prolog and epilog code.
 void PEI::calculateSaveRestoreBlocks(MachineFunction &Fn) {
-  const MachineFrameInfo &MFI = Fn.getFrameInfo();
-
   // Even when we do not change any CSR, we still want to insert the
   // prologue and epilogue of the function.
   // So set the save points for those.
+  if (isShrinkWrapEnabled(Fn))
+    return calculateShrinkWrappedSaveRestoreBlocks(Fn);
+  else
+    return calculateDefaultSaveRestoreBlocks(Fn);
+}
 
-  // Use the points found by shrink-wrapping, if any.
-  if (MFI.getSavePoint()) {
-    SaveBlocks.push_back(MFI.getSavePoint());
-    assert(MFI.getRestorePoint() && "Both restore and save must be set");
-    MachineBasicBlock *RestoreBlock = MFI.getRestorePoint();
-    // If RestoreBlock does not have any successor and is not a return block
-    // then the end point is unreachable and we do not need to insert any
-    // epilogue.
-    if (!RestoreBlock->succ_empty() || RestoreBlock->isReturnBlock())
-      RestoreBlocks.push_back(RestoreBlock);
-    return;
+void PEI::calculateShrinkWrappedSaveRestoreBlocks(MachineFunction &Fn) {
+  // The algorithm is based on (post-)dominator trees.
+  auto *MDT = getAnalysisIfAvailable<MachineDominatorTree>();
+  auto *MPDT = getAnalysisIfAvailable<MachinePostDominatorTree>();
+  // Use the information of the basic block frequency to check the
+  // profitability of the new points.
+  auto *MBFI = getAnalysisIfAvailable<MachineBlockFrequencyInfo>();
+  // Hold the loop information. Used to determine if Save and Restore
+  // are in the same loop.
+  auto *MLI = getAnalysisIfAvailable<MachineLoopInfo>();
+
+  // We get the analysis if they are available, but if they are not, we still
+  // need to compute them.
+  Optional<MachineDominatorTree> MDTP;
+  Optional<MachinePostDominatorTree> MPDTP;
+  Optional<MachineBlockFrequencyInfo> MBFIP;
+  Optional<MachineBranchProbabilityInfo> MBPIP;
+  Optional<MachineLoopInfo> MLIP;
+  // MachineDominatorTree. Required by shrink-wrapping and MachineLoopInfo.
+  if (!MDT) {
+    MDTP.emplace();
+    MDTP->runOnMachineFunction(Fn);
+    MDT = &*MDTP;
+  }
+  // MachinePostDominatorTree. Required by shrink-wrapping.
+  if (!MPDT) {
+    MPDTP.emplace();
+    MPDTP->runOnMachineFunction(Fn);
+    MPDT = &*MPDTP;
+  }
+  // MachineLoopInfo. Required by shrink-wrapping and MachineBlockFrequencyInfo.
+  if (!MLI) {
+    MLIP.emplace();
+    MLIP->releaseMemory();
+    MLIP->getBase().analyze(MDT->getBase());
+    MLI = &*MLIP;
+  }
+  // MachineBlockFrequencyInfo. Required by shrink-wrapping.
+  if (!MBFI) {
+    auto *MBPI = getAnalysisIfAvailable<MachineBranchProbabilityInfo>();
+    // MachineBranchProbabilityInfo. Required by MachineBlockFrequencyInfo.
+    if (!MBPI) {
+      MBPIP.emplace();
+      MBPI = &*MBPIP;
+    }
+    MBFIP.emplace();
+    MBFIP->calculate(Fn, *MBPI, *MLI);
+    MBFI = &*MBFIP;
   }
 
+  DEBUG_WITH_TYPE("shrink-wrap",
+                  dbgs() << "**** Analysing " << Fn.getName() << '\n');
+
+  // Gather all the basic blocks that use CSRs and/or the stack.
+  CSRFIShrinkWrapInfo SWI(Fn, RS);
+  // Run the shrink-wrapping algorithm.
+  DominatorShrinkWrapper SW(Fn, SWI, *MDT, *MPDT, *MBFI, *MLI);
+  const BitVector &TrackedElts = SW.getTrackedElts();
+  // Fallback on the default save / restore points.
+  if (!TrackedElts.test(CSRFIShrinkWrapInfo::CSRFIUsedBit))
+    return calculateDefaultSaveRestoreBlocks(Fn);
+
+  // If the CSRFIUsedBit is set, we can now assume that:
+  // * All used elements are tracked (only one in this case)
+  // * There is *exactly one* save
+  // * There is *exactly one* restore
+  assert(TrackedElts == SWI.getAllUsedElts() && SW.getSaves().size() == 1 &&
+         SW.getSaves().size() == 1);
+
+  unsigned SaveMBBNum = SW.getSaves().begin()->first;
+
+  MachineBasicBlock *SaveBlock = Fn.getBlockNumbered(SaveMBBNum);
+  SaveBlocks.push_back(SaveBlock);
+
+  unsigned RestoreMBBNum = SW.getRestores().begin()->first;
+  MachineBasicBlock *RestoreBlock = Fn.getBlockNumbered(RestoreMBBNum);
+  // If RestoreBlock does not have any successor and is not a return block
+  // then the end point is unreachable and we do not need to insert any
+  // epilogue.
+  if (!RestoreBlock->succ_empty() || RestoreBlock->isReturnBlock())
+    RestoreBlocks.push_back(RestoreBlock);
+}
+
+/// Compute the sets of entry and return blocks for saving and restoring
+/// callee-saved registers, and placing prolog and epilog code.
+void PEI::calculateDefaultSaveRestoreBlocks(MachineFunction &Fn) {
   // Save refs to entry and return blocks.
   SaveBlocks.push_back(&Fn.front());
   for (MachineBasicBlock &MBB : Fn) {
@@ -403,7 +537,9 @@ static void assignCalleeSavedSpillSlots(MachineFunction &F,
 
 /// Helper function to update the liveness information for the callee-saved
 /// registers.
-static void updateLiveness(MachineFunction &MF) {
+static void updateLiveness(MachineFunction &MF,
+                           MachineBasicBlock *Save = nullptr,
+                           MachineBasicBlock *Restore = nullptr) {
   MachineFrameInfo &MFI = MF.getFrameInfo();
   // Visited will contain all the basic blocks that are in the region
   // where the callee saved registers are alive:
@@ -415,7 +551,6 @@ static void updateLiveness(MachineFunction &MF) {
   SmallPtrSet<MachineBasicBlock *, 8> Visited;
   SmallVector<MachineBasicBlock *, 8> WorkList;
   MachineBasicBlock *Entry = &MF.front();
-  MachineBasicBlock *Save = MFI.getSavePoint();
 
   if (!Save)
     Save = Entry;
@@ -426,7 +561,6 @@ static void updateLiveness(MachineFunction &MF) {
   }
   Visited.insert(Save);
 
-  MachineBasicBlock *Restore = MFI.getRestorePoint();
   if (Restore)
     // By construction Restore cannot be visited, otherwise it
     // means there exists a path to Restore that does not go
@@ -537,7 +671,10 @@ void PEI::spillCalleeSavedRegs(MachineFunction &Fn) {
         insertCSRSaves(*SaveBlock, CSI);
         // Update the live-in information of all the blocks up to the save
         // point.
-        updateLiveness(Fn);
+        if (SaveBlocks.size() == 1 && RestoreBlocks.size() == 1)
+          updateLiveness(Fn, SaveBlocks.front(), RestoreBlocks.front());
+        else
+          updateLiveness(Fn);
       }
       for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
         insertCSRRestores(*RestoreBlock, CSI);

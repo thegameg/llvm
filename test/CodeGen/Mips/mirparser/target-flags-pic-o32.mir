@@ -63,8 +63,6 @@ frameInfo:
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
   hasMustTailInVarArgFunc: false
-  savePoint:       ''
-  restorePoint:    ''
 fixedStack:
 stack:
 constants:

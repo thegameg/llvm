@@ -572,18 +572,6 @@ bool MIRParserImpl::initializeFrameInfo(PerFunctionMIParsingState &PFS,
   MFI.setHasOpaqueSPAdjustment(YamlMFI.HasOpaqueSPAdjustment);
   MFI.setHasVAStart(YamlMFI.HasVAStart);
   MFI.setHasMustTailInVarArgFunc(YamlMFI.HasMustTailInVarArgFunc);
-  if (!YamlMFI.SavePoint.Value.empty()) {
-    MachineBasicBlock *MBB = nullptr;
-    if (parseMBBReference(PFS, MBB, YamlMFI.SavePoint))
-      return true;
-    MFI.setSavePoint(MBB);
-  }
-  if (!YamlMFI.RestorePoint.Value.empty()) {
-    MachineBasicBlock *MBB = nullptr;
-    if (parseMBBReference(PFS, MBB, YamlMFI.RestorePoint))
-      return true;
-    MFI.setRestorePoint(MBB);
-  }
 
   std::vector<CalleeSavedInfo> CSIInfo;
   // Initialize the fixed frame objects.

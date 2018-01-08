@@ -87,7 +87,6 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeRenameIndependentSubregsPass(Registry);
   initializeSafeStackLegacyPassPass(Registry);
   initializeScalarizeMaskedMemIntrinPass(Registry);
-  initializeShrinkWrapPass(Registry);
   initializeSlotIndexesPass(Registry);
   initializeStackColoringPass(Registry);
   initializeStackMapLivenessPass(Registry);

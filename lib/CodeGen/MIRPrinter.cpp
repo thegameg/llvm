@@ -313,14 +313,6 @@ void MIRPrinter::convert(ModuleSlotTracker &MST,
   YamlMFI.HasOpaqueSPAdjustment = MFI.hasOpaqueSPAdjustment();
   YamlMFI.HasVAStart = MFI.hasVAStart();
   YamlMFI.HasMustTailInVarArgFunc = MFI.hasMustTailInVarArgFunc();
-  if (MFI.getSavePoint()) {
-    raw_string_ostream StrOS(YamlMFI.SavePoint.Value);
-    StrOS << printMBBReference(*MFI.getSavePoint());
-  }
-  if (MFI.getRestorePoint()) {
-    raw_string_ostream StrOS(YamlMFI.RestorePoint.Value);
-    StrOS << printMBBReference(*MFI.getRestorePoint());
-  }
 }
 
 void MIRPrinter::convertStackObjects(yaml::MachineFunction &YMF,

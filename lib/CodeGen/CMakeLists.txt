@@ -10,12 +10,14 @@ add_llvm_library(LLVMCodeGen
   BuiltinGCs.cpp
   CalcSpillWeights.cpp
   CallingConvLower.cpp
+  CSRFIShrinkWrapInfo.cpp
   CodeGen.cpp
   CodeGenPrepare.cpp
   CriticalAntiDepBreaker.cpp
   DeadMachineInstructionElim.cpp
   DetectDeadLanes.cpp
   DFAPacketizer.cpp
+  DominatorShrinkWrapper.cpp
   DwarfEHPrepare.cpp
   EarlyIfConversion.cpp
   EdgeBundles.cpp

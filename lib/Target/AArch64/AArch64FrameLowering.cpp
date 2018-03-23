@@ -418,7 +418,7 @@ static MachineBasicBlock::iterator convertCalleeSaveRestoreToSPPrePostIncDec(
   bool NewIsUnscaled = false;
   switch (MBBI->getOpcode()) {
   default:
-    llvm_unreachable("Unexpected callee-save save/restore opcode!");
+    return MBBI;
   case AArch64::STPXi:
     NewOpc = AArch64::STPXpre;
     break;
@@ -458,7 +458,7 @@ static MachineBasicBlock::iterator convertCalleeSaveRestoreToSPPrePostIncDec(
        ++OpndIdx)
     MIB.add(MBBI->getOperand(OpndIdx));
 
-  assert(MBBI->getOperand(OpndIdx).getImm() == 0 &&
+  assert(MBBI->getOperand(OpndIdx).getImm() >= 0 &&
          "Unexpected immediate offset in first/last callee-save save/restore "
          "instruction!");
   assert(MBBI->getOperand(OpndIdx - 1).getReg() == AArch64::SP &&
@@ -563,9 +563,11 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
                     MachineInstr::FrameSetup);
     NumBytes = 0;
   } else if (PrologueSaveSize != 0) {
+    auto OldMBBI = MBBI;
     MBBI = convertCalleeSaveRestoreToSPPrePostIncDec(MBB, MBBI, DL, TII,
                                                      -PrologueSaveSize);
-    NumBytes -= PrologueSaveSize;
+    if (OldMBBI != MBBI)
+      NumBytes -= PrologueSaveSize;
   }
   assert(NumBytes >= 0 && "Negative stack allocation size!?");
 
@@ -786,7 +788,7 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
   const TargetInstrInfo *TII = Subtarget.getInstrInfo();
   DebugLoc DL;
   bool IsTailCallReturn = false;
-  if (MBB.end() != MBBI) {
+  if (MBB.end() != MBBI && MBB.isReturnBlock()) {
     DL = MBBI->getDebugLoc();
     unsigned RetOpcode = MBBI->getOpcode();
     IsTailCallReturn = RetOpcode == AArch64::TCRETURNdi ||
@@ -1157,6 +1159,7 @@ static void computeCalleeSaveRegisterPairs(
 bool AArch64FrameLowering::spillCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     const std::vector<CalleeSavedInfo> &CSI,
+    const BitVector &Mask,
     const TargetRegisterInfo *TRI) const {
   MachineFunction &MF = *MBB.getParent();
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
@@ -1172,6 +1175,17 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
     unsigned Reg1 = RPI.Reg1;
     unsigned Reg2 = RPI.Reg2;
     unsigned StrOpc;
+
+    if (Mask.test(Reg1) && !Mask.test(Reg2)) {
+      RPI.Reg2 = AArch64::NoRegister;
+      Reg2 = AArch64::NoRegister;
+    } else if (!Mask.test(Reg1) && Mask.test(Reg2)) {
+      RPI.Reg1 = Reg2;
+      Reg1 = Reg2;
+      RPI.Reg2 = AArch64::NoRegister;
+    } else if (!Mask.test(Reg1) && !Mask.test(Reg2))
+      continue;
+
 
     // Issue sequence of spills for cs regs.  The first spill may be converted
     // to a pre-decrement store later by emitPrologue if the callee-save stack
@@ -1220,6 +1234,7 @@ bool AArch64FrameLowering::spillCalleeSavedRegisters(
 bool AArch64FrameLowering::restoreCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     std::vector<CalleeSavedInfo> &CSI,
+    const BitVector &Mask,
     const TargetRegisterInfo *TRI) const {
   MachineFunction &MF = *MBB.getParent();
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
@@ -1234,6 +1249,18 @@ bool AArch64FrameLowering::restoreCalleeSavedRegisters(
   auto EmitMI = [&](const RegPairInfo &RPI) {
     unsigned Reg1 = RPI.Reg1;
     unsigned Reg2 = RPI.Reg2;
+
+    if (Mask.test(Reg1) && !Mask.test(Reg2)) {
+      Reg2 = AArch64::NoRegister;
+      Reg2 = AArch64::NoRegister;
+    } else if (!Mask.test(Reg1) && Mask.test(Reg2)) {
+      Reg1 = Reg2;
+      Reg1 = Reg2;
+      Reg2 = AArch64::NoRegister;
+      Reg2 = AArch64::NoRegister;
+    } else if (!Mask.test(Reg1) && !Mask.test(Reg2)) {
+      return;
+    }
 
     // Issue sequence of restores for cs regs. The last restore may be converted
     // to a post-increment load later by emitEpilogue if the callee-save stack

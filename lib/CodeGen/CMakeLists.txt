@@ -100,6 +100,7 @@ add_llvm_library(LLVMCodeGen
   MacroFusion.cpp
   OptimizePHIs.cpp
   ParallelCG.cpp
+  PartialShrinkWrapInfo.cpp
   PeepholeOptimizer.cpp
   PHIElimination.cpp
   PHIEliminationUtils.cpp

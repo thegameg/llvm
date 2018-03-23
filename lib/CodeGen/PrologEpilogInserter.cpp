@@ -18,9 +18,11 @@
 
 #include "CSRFIShrinkWrapInfo.h"
 #include "DominatorShrinkWrapper.h"
+#include "PartialShrinkWrapInfo.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -85,7 +87,13 @@ static cl::opt<cl::boolOrDefault>
 EnableShrinkWrapOpt("enable-shrink-wrap", cl::Hidden,
                     cl::desc("enable the shrink-wrapping pass"));
 
+static cl::opt<bool>
+    EnablePartialShrinkWrap("enable-partial-shrink-wrap", cl::Hidden,
+                            cl::desc("enable partial shrink-wrapping"),
+                            cl::init(true));
+
 using MBBVector = SmallVector<MachineBasicBlock *, 4>;
+using MBBCSIMap = DenseMap<MachineBasicBlock *, BitVector>;
 
 namespace {
 
@@ -111,10 +119,18 @@ private:
   unsigned MinCSFrameIndex = std::numeric_limits<unsigned>::max();
   unsigned MaxCSFrameIndex = 0;
 
-  // Save and Restore blocks of the current function. Typically there is a
+  // Prologue and epilogue blocks of the current function. Typically there is a
   // single save block, unless Windows EH funclets are involved.
-  MBBVector SaveBlocks;
-  MBBVector RestoreBlocks;
+  MBBVector PrologueBlocks;
+  MBBVector EpilogueBlocks;
+
+  // Save and restore blocks for CSRs. Each map entry assigns a list of CSRs to
+  // a basic block.
+  MBBCSIMap CSRSaveBlocks;
+  MBBCSIMap CSRRestoreBlocks;
+
+  // All the saved CSRs.
+  BitVector SavedRegs;
 
   // Flag to control whether to use the register scavenger to resolve
   // frame index materialization registers. Set according to
@@ -133,7 +149,8 @@ private:
 
   void calculateCallFrameInfo(MachineFunction &Fn);
   void calculateSaveRestoreBlocks(MachineFunction &Fn);
-  void calculateDefaultSaveRestoreBlocks(MachineFunction &Fn);
+  void calculateDefaultSaveRestoreBlocks(MachineFunction &Fn, bool CSRs = true,
+                                         bool PE = true);
   void calculateShrinkWrappedSaveRestoreBlocks(MachineFunction &Fn);
   void spillCalleeSavedRegs(MachineFunction &MF);
 
@@ -208,6 +225,7 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   FrameIndexEliminationScavenging = (RS && !FrameIndexVirtualScavenging) ||
     TRI->requiresFrameIndexReplacementScavenging(Fn);
   ORE = &getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE();
+  SavedRegs.resize(TRI->getNumRegs());
 
   // Determine placement of CSR spill/restore code and prolog/epilog code:
   // place all spills in the entry block, all restores in return blocks.
@@ -263,8 +281,11 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   });
 
   delete RS;
-  SaveBlocks.clear();
-  RestoreBlocks.clear();
+  PrologueBlocks.clear();
+  EpilogueBlocks.clear();
+  CSRSaveBlocks.clear();
+  CSRRestoreBlocks.clear();
+  SavedRegs.clear();
   return true;
 }
 
@@ -419,6 +440,68 @@ void PEI::calculateShrinkWrappedSaveRestoreBlocks(MachineFunction &Fn) {
   DEBUG_WITH_TYPE("shrink-wrap",
                   dbgs() << "**** Analysing " << Fn.getName() << '\n');
 
+  const TargetRegisterInfo *TRI = Fn.getSubtarget().getRegisterInfo();
+
+  if (EnablePartialShrinkWrap) {
+  // Gather all the basic blocks that use CSRs and/or the stack.
+  PartialShrinkWrapInfo SWI(Fn, RS);
+  // Run the shrink-wrapping algorithm.
+  DominatorShrinkWrapper SW(Fn, SWI, *MDT, *MPDT, *MBFI, *MLI);
+
+  MachineRegisterInfo &MRI = Fn.getRegInfo();
+  const MCPhysReg *CSRegs = MRI.getCalleeSavedRegs();
+  const BitVector &TrackedElts = SW.getTrackedElts();
+  // Fallback on the default save / restore points.
+  if (TrackedElts.none()) {
+    const BitVector &All = SWI.getAllUsedElts();
+    for (unsigned CSRIdx : All.set_bits())
+      if (CSRIdx)
+        SavedRegs.set(CSRegs[CSRIdx]);
+    return calculateDefaultSaveRestoreBlocks(Fn);
+  }
+
+  // Fallback on the default save / restore points for the stack only.
+  if (!TrackedElts.test(PartialShrinkWrapInfo::StackBit))
+    calculateDefaultSaveRestoreBlocks(Fn, /*CSRs=*/false);
+
+  for (auto &KV : SW.getSaves()) {
+    unsigned MBBNum = KV.first;
+    MachineBasicBlock *MBB = Fn.getBlockNumbered(MBBNum);
+    const BitVector &Saves = KV.second;
+
+    for (unsigned Save : Saves.set_bits()) {
+      if (Save == PartialShrinkWrapInfo::StackBit)
+        PrologueBlocks.push_back(MBB);
+      else {
+        BitVector &CSRSave = CSRSaveBlocks[MBB];
+        CSRSave.resize(TRI->getNumRegs());
+        unsigned RegIdx = Save - PartialShrinkWrapInfo::FirstCSRBit;
+        CSRSave.set(CSRegs[RegIdx]);
+        SavedRegs.set(CSRegs[RegIdx]);
+      }
+    }
+  }
+
+  for (auto &KV : SW.getRestores()) {
+    unsigned MBBNum = KV.first;
+    MachineBasicBlock *MBB = Fn.getBlockNumbered(MBBNum);
+    if (MBB->succ_empty() && !MBB->isReturnBlock())
+      continue;
+    const BitVector &Restores = KV.second;
+
+    for (unsigned Restore : Restores.set_bits()) {
+      if (Restore == PartialShrinkWrapInfo::StackBit) {
+        EpilogueBlocks.push_back(MBB);
+      } else {
+        BitVector &CSRRestore = CSRRestoreBlocks[MBB];
+        CSRRestore.resize(TRI->getNumRegs());
+        unsigned RegIdx = Restore - PartialShrinkWrapInfo::FirstCSRBit;
+        CSRRestore.set(CSRegs[RegIdx]);
+        SavedRegs.set(CSRegs[RegIdx]);
+      }
+    }
+  }
+  } else {
   // Gather all the basic blocks that use CSRs and/or the stack.
   CSRFIShrinkWrapInfo SWI(Fn, RS);
   // Run the shrink-wrapping algorithm.
@@ -438,27 +521,50 @@ void PEI::calculateShrinkWrappedSaveRestoreBlocks(MachineFunction &Fn) {
   unsigned SaveMBBNum = SW.getSaves().begin()->first;
 
   MachineBasicBlock *SaveBlock = Fn.getBlockNumbered(SaveMBBNum);
-  SaveBlocks.push_back(SaveBlock);
+  BitVector &CSRSave = CSRSaveBlocks[SaveBlock];
+  CSRSave = SWI.getAllUsedElts();
+  PrologueBlocks.push_back(SaveBlock);
 
   unsigned RestoreMBBNum = SW.getRestores().begin()->first;
   MachineBasicBlock *RestoreBlock = Fn.getBlockNumbered(RestoreMBBNum);
   // If RestoreBlock does not have any successor and is not a return block
   // then the end point is unreachable and we do not need to insert any
   // epilogue.
-  if (!RestoreBlock->succ_empty() || RestoreBlock->isReturnBlock())
-    RestoreBlocks.push_back(RestoreBlock);
+  if (!RestoreBlock->succ_empty() || RestoreBlock->isReturnBlock()) {
+    BitVector &CSRRestore = CSRRestoreBlocks[RestoreBlock];
+    CSRRestore = SWI.getAllUsedElts();
+    EpilogueBlocks.push_back(RestoreBlock);
+  }
+
+  // All regs are saved.
+  SavedRegs |= SWI.getAllUsedElts();
+  }
 }
 
 /// Compute the sets of entry and return blocks for saving and restoring
 /// callee-saved registers, and placing prolog and epilog code.
-void PEI::calculateDefaultSaveRestoreBlocks(MachineFunction &Fn) {
+void PEI::calculateDefaultSaveRestoreBlocks(MachineFunction &Fn, bool CSRs,
+                                            bool PE) {
+  assert(CSRs || PE && "Nothing to calculate");
+
   // Save refs to entry and return blocks.
-  SaveBlocks.push_back(&Fn.front());
+  if (PE)
+    PrologueBlocks.push_back(&Fn.front());
+  if (CSRs)
+    CSRSaveBlocks[&Fn.front()] = SavedRegs;
   for (MachineBasicBlock &MBB : Fn) {
-    if (MBB.isEHFuncletEntry())
-      SaveBlocks.push_back(&MBB);
-    if (MBB.isReturnBlock())
-      RestoreBlocks.push_back(&MBB);
+    if (MBB.isEHFuncletEntry()) {
+      if (PE)
+        PrologueBlocks.push_back(&MBB);
+      if (CSRs)
+        CSRRestoreBlocks[&Fn.front()] = SavedRegs;
+    }
+    if (MBB.isReturnBlock()) {
+      if (PE)
+        EpilogueBlocks.push_back(&MBB);
+      if (CSRs)
+        CSRRestoreBlocks[&Fn.front()] = SavedRegs;
+    }
   }
 }
 
@@ -537,76 +643,50 @@ static void assignCalleeSavedSpillSlots(MachineFunction &F,
 
 /// Helper function to update the liveness information for the callee-saved
 /// registers.
-static void updateLiveness(MachineFunction &MF,
-                           MachineBasicBlock *Save = nullptr,
-                           MachineBasicBlock *Restore = nullptr) {
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  // Visited will contain all the basic blocks that are in the region
-  // where the callee saved registers are alive:
-  // - Anything that is not Save or Restore -> LiveThrough.
-  // - Save -> LiveIn.
-  // - Restore -> LiveOut.
-  // The live-out is not attached to the block, so no need to keep
-  // Restore in this set.
-  SmallPtrSet<MachineBasicBlock *, 8> Visited;
-  SmallVector<MachineBasicBlock *, 8> WorkList;
-  MachineBasicBlock *Entry = &MF.front();
-
-  if (!Save)
-    Save = Entry;
-
-  if (Entry != Save) {
-    WorkList.push_back(Entry);
-    Visited.insert(Entry);
-  }
-  Visited.insert(Save);
-
-  if (Restore)
-    // By construction Restore cannot be visited, otherwise it
-    // means there exists a path to Restore that does not go
-    // through Save.
-    WorkList.push_back(Restore);
-
-  while (!WorkList.empty()) {
-    const MachineBasicBlock *CurBB = WorkList.pop_back_val();
-    // By construction, the region that is after the save point is
-    // dominated by the Save and post-dominated by the Restore.
-    if (CurBB == Save && Save != Restore)
-      continue;
-    // Enqueue all the successors not already visited.
-    // Those are by construction either before Save or after Restore.
-    for (MachineBasicBlock *SuccBB : CurBB->successors())
-      if (Visited.insert(SuccBB).second)
-        WorkList.push_back(SuccBB);
-  }
-
-  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
-
-  MachineRegisterInfo &MRI = MF.getRegInfo();
-  for (unsigned i = 0, e = CSI.size(); i != e; ++i) {
-    for (MachineBasicBlock *MBB : Visited) {
-      MCPhysReg Reg = CSI[i].getReg();
-      // Add the callee-saved register as live-in.
-      // It's killed at the spill.
-      if (!MRI.isReserved(Reg) && !MBB->isLiveIn(Reg))
-        MBB->addLiveIn(Reg);
+static void updateLiveness(MachineFunction &MF, const MBBCSIMap &CSRSaves,
+                           const MBBCSIMap &CSRRestores,
+                           ArrayRef<CalleeSavedInfo> CSI) {
+  const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
+  BitVector ExpectedSaves(TRI->getNumRegs(), false);
+  for (MachineBasicBlock *MBB : post_order(&MF)) {
+    auto Found = CSRRestores.find(MBB);
+    if (Found != CSRRestores.end()) {
+      ExpectedSaves |= Found->second;
+    }
+    Found = CSRSaves.find(MBB);
+    if (Found != CSRSaves.end()) {
+      BitVector Inv = Found->second;
+      Inv.flip();
+      ExpectedSaves &= Inv;
+    }
+    auto UnExpectedSaves = ExpectedSaves;
+    UnExpectedSaves.flip();
+    for (const CalleeSavedInfo &CS : CSI) {
+      MCPhysReg Reg = CS.getReg();
+      if (UnExpectedSaves.test(Reg)) {
+        MachineRegisterInfo &MRI = MF.getRegInfo();
+        if (!MRI.isReserved(Reg) && !MBB->isLiveIn(Reg))
+          MBB->addLiveIn(Reg);
+      }
     }
   }
 }
 
 /// Insert restore code for the callee-saved registers used in the function.
-static void insertCSRSaves(MachineBasicBlock &SaveBlock,
-                           ArrayRef<CalleeSavedInfo> CSI) {
+static void insertCSRSaves(MachineBasicBlock &SaveBlock, BitVector &Mask,
+                           const std::vector<CalleeSavedInfo> &CSI) {
   MachineFunction &Fn = *SaveBlock.getParent();
   const TargetInstrInfo &TII = *Fn.getSubtarget().getInstrInfo();
   const TargetFrameLowering *TFI = Fn.getSubtarget().getFrameLowering();
   const TargetRegisterInfo *TRI = Fn.getSubtarget().getRegisterInfo();
 
   MachineBasicBlock::iterator I = SaveBlock.begin();
-  if (!TFI->spillCalleeSavedRegisters(SaveBlock, I, CSI, TRI)) {
+  if (!TFI->spillCalleeSavedRegisters(SaveBlock, I, CSI, Mask, TRI)) {
     for (const CalleeSavedInfo &CS : CSI) {
       // Insert the spill to the stack frame.
       unsigned Reg = CS.getReg();
+      if (!Mask.test(Reg))
+        continue;
       const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(Reg);
       TII.storeRegToStackSlot(SaveBlock, I, Reg, true, CS.getFrameIdx(), RC,
                               TRI);
@@ -615,7 +695,7 @@ static void insertCSRSaves(MachineBasicBlock &SaveBlock,
 }
 
 /// Insert restore code for the callee-saved registers used in the function.
-static void insertCSRRestores(MachineBasicBlock &RestoreBlock,
+static void insertCSRRestores(MachineBasicBlock &RestoreBlock, BitVector &Mask,
                               std::vector<CalleeSavedInfo> &CSI) {
   MachineFunction &Fn = *RestoreBlock.getParent();
   const TargetInstrInfo &TII = *Fn.getSubtarget().getInstrInfo();
@@ -626,9 +706,11 @@ static void insertCSRRestores(MachineBasicBlock &RestoreBlock,
   // terminators that precede it.
   MachineBasicBlock::iterator I = RestoreBlock.getFirstTerminator();
 
-  if (!TFI->restoreCalleeSavedRegisters(RestoreBlock, I, CSI, TRI)) {
+  if (!TFI->restoreCalleeSavedRegisters(RestoreBlock, I, CSI, Mask, TRI)) {
     for (const CalleeSavedInfo &CI : reverse(CSI)) {
       unsigned Reg = CI.getReg();
+      if (!Mask.test(Reg))
+        continue;
       const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(Reg);
       TII.loadRegFromStackSlot(RestoreBlock, I, Reg, CI.getFrameIdx(), RC, TRI);
       assert(I != RestoreBlock.begin() &&
@@ -654,12 +736,61 @@ void PEI::spillCalleeSavedRegs(MachineFunction &Fn) {
   MinCSFrameIndex = std::numeric_limits<unsigned>::max();
   MaxCSFrameIndex = 0;
 
+  // At this moment, SavedRegs contains all the registers shrink-wrapping found
+  // and already assigned save / restore blocks for (if any).
+  BitVector DiscoveredByShrinkWrapInfoRegs = SavedRegs;
+  SavedRegs.clear();
+
   // Determine which of the registers in the callee save list should be saved.
-  BitVector SavedRegs;
   TFI->determineCalleeSaves(Fn, SavedRegs, RS);
 
+  const TargetRegisterInfo *TRI = Fn.getSubtarget().getRegisterInfo();
+  BitVector DiscoveredByTargetRegs = SavedRegs;
+  BitVector AddedByTarget = DiscoveredByTargetRegs;
+  for (unsigned Reg : AddedByTarget.set_bits())
+    dbgs() << "1Added: " << printReg(Reg, TRI) << '\n';
+  AddedByTarget ^= DiscoveredByShrinkWrapInfoRegs;
+  for (unsigned Reg : AddedByTarget.set_bits())
+    dbgs() << "2Added: " << printReg(Reg, TRI) << '\n';
+  AddedByTarget &= DiscoveredByTargetRegs;
+  for (unsigned Reg : AddedByTarget.set_bits())
+    dbgs() << "3Added: " << printReg(Reg, TRI) << '\n';
+  BitVector RemovedByTarget = DiscoveredByTargetRegs;
+  for (unsigned Reg : RemovedByTarget.set_bits())
+    dbgs() << "1Removed: " << printReg(Reg, TRI) << '\n';
+  RemovedByTarget ^= DiscoveredByShrinkWrapInfoRegs;
+  for (unsigned Reg : RemovedByTarget.set_bits())
+    dbgs() << "2Removed: " << printReg(Reg, TRI) << '\n';
+  RemovedByTarget &= DiscoveredByShrinkWrapInfoRegs;
+  for (unsigned Reg : RemovedByTarget.set_bits())
+    dbgs() << "3Removed: " << printReg(Reg, TRI) << '\n';
+
+  for (unsigned Reg : DiscoveredByShrinkWrapInfoRegs.set_bits())
+    dbgs() << "ShrinkWrapDiscovery:: " << printReg(Reg, TRI) << '\n';
+  for (unsigned Reg : DiscoveredByTargetRegs.set_bits())
+    dbgs() << "TargetDiscovery: " << printReg(Reg, TRI) << '\n';
+  for (unsigned Reg : AddedByTarget.set_bits())
+    dbgs() << "Added: " << printReg(Reg, TRI) << '\n';
+  for (unsigned Reg : RemovedByTarget.set_bits())
+    dbgs() << "Removed: " << printReg(Reg, TRI) << '\n';
+  assert(!RemovedByTarget.count() && !AddedByTarget.count());
+  //assert(AddedByTarget.count());
+  //assert(RemovedByTarget.count());
+
+  // If there are any newly discovered saved regs, assign the saving block to
+  // every prologue, and the restoring block to every epilogue.
+  // Save the extra regs in all the prologues.
+  for (MachineBasicBlock *MBB : PrologueBlocks)
+    CSRSaveBlocks[MBB] |= AddedByTarget;
+  // Restore the extra regs in all the epilogues.
+  for (MachineBasicBlock *MBB : EpilogueBlocks)
+    CSRRestoreBlocks[MBB] |= AddedByTarget;
+
+  SavedRegs |= RemovedByTarget;
+
   // Assign stack slots for any callee-saved registers that must be spilled.
-  assignCalleeSavedSpillSlots(Fn, SavedRegs, MinCSFrameIndex, MaxCSFrameIndex);
+  assignCalleeSavedSpillSlots(Fn, SavedRegs, MinCSFrameIndex,
+                              MaxCSFrameIndex);
 
   // Add the code to save and restore the callee saved registers.
   if (!F.hasFnAttribute(Attribute::Naked)) {
@@ -667,17 +798,20 @@ void PEI::spillCalleeSavedRegs(MachineFunction &Fn) {
 
     std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
     if (!CSI.empty()) {
-      for (MachineBasicBlock *SaveBlock : SaveBlocks) {
-        insertCSRSaves(*SaveBlock, CSI);
-        // Update the live-in information of all the blocks up to the save
-        // point.
-        if (SaveBlocks.size() == 1 && RestoreBlocks.size() == 1)
-          updateLiveness(Fn, SaveBlocks.front(), RestoreBlocks.front());
-        else
-          updateLiveness(Fn);
+      for (auto &KV : CSRSaveBlocks) {
+        MachineBasicBlock &MBB = *KV.first;
+        BitVector &Mask = KV.second;
+        insertCSRSaves(MBB, Mask, CSI);
       }
-      for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
-        insertCSRRestores(*RestoreBlock, CSI);
+      for (auto &KV : CSRRestoreBlocks) {
+        MachineBasicBlock &MBB = *KV.first;
+        BitVector &Mask = KV.second;
+        insertCSRRestores(MBB, Mask, CSI);
+      }
+
+      // Update the live-in information of all the blocks up to the save
+      // point.
+      updateLiveness(Fn, CSRSaveBlocks, CSRRestoreBlocks, CSI);
     }
   }
 }
@@ -1101,14 +1235,14 @@ void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   const TargetFrameLowering &TFI = *Fn.getSubtarget().getFrameLowering();
 
   // Add prologue to the function...
-  for (MachineBasicBlock *SaveBlock : SaveBlocks)
+  for (MachineBasicBlock *SaveBlock : PrologueBlocks)
     TFI.emitPrologue(Fn, *SaveBlock);
 
   // Add epilogue to restore the callee-save registers in each exiting block.
-  for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
+  for (MachineBasicBlock *RestoreBlock : EpilogueBlocks)
     TFI.emitEpilogue(Fn, *RestoreBlock);
 
-  for (MachineBasicBlock *SaveBlock : SaveBlocks)
+  for (MachineBasicBlock *SaveBlock : PrologueBlocks)
     TFI.inlineStackProbe(Fn, *SaveBlock);
 
   // Emit additional code that is required to support segmented stacks, if
@@ -1116,7 +1250,7 @@ void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   // for segmented stacks (libgcc is one), will result in allocating stack
   // space in small chunks instead of one large contiguous block.
   if (Fn.shouldSplitStack()) {
-    for (MachineBasicBlock *SaveBlock : SaveBlocks)
+    for (MachineBasicBlock *SaveBlock : PrologueBlocks)
       TFI.adjustForSegmentedStacks(Fn, *SaveBlock);
     // Record that there are split-stack functions, so we will emit a
     // special section to tell the linker.
@@ -1130,7 +1264,7 @@ void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   // different conditional check and another BIF for allocating more stack
   // space.
   if (Fn.getFunction().getCallingConv() == CallingConv::HiPE)
-    for (MachineBasicBlock *SaveBlock : SaveBlocks)
+    for (MachineBasicBlock *SaveBlock : PrologueBlocks)
       TFI.adjustForHiPEPrologue(Fn, *SaveBlock);
 }
 

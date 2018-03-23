@@ -46,11 +46,13 @@ public:
   bool spillCalleeSavedRegisters(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MI,
                                  const std::vector<CalleeSavedInfo> &CSI,
+                                 const BitVector &Mask,
                                  const TargetRegisterInfo *TRI) const override;
 
   bool restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator MI,
                                   std::vector<CalleeSavedInfo> &CSI,
+                                  const BitVector &Mask,
                                   const TargetRegisterInfo *TRI) const override;
 
   /// \brief Can this function use the red zone for local allocations.

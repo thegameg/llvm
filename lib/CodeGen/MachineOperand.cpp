@@ -829,17 +829,34 @@ void MachineOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
     break;
   }
   case MachineOperand::MO_RegisterMask: {
-    OS << "<regmask";
+    const uint32_t *RegMask = getRegMask();
+    assert(RegMask && "Can't print an empty register mask");
+
+    int RegMaskIdx = -1;
+    if (!IsStandalone) { // Print the whole regmask if it's standalone.
+      auto Found = find(TRI->getRegMasks(), RegMask);
+      if (Found != TRI->getRegMasks().end())
+        RegMaskIdx = std::distance(TRI->getRegMasks().begin(), Found);
+    }
+
+    if (RegMaskIdx != -1) {
+      OS << StringRef(TRI->getRegMaskNames()[RegMaskIdx]).lower();
+      break;
+    }
+
+    OS << "CustomRegMask(";
     if (TRI) {
       unsigned NumRegsInMask = 0;
       unsigned NumRegsEmitted = 0;
       for (unsigned i = 0; i < TRI->getNumRegs(); ++i) {
         unsigned MaskWord = i / 32;
         unsigned MaskBit = i % 32;
-        if (getRegMask()[MaskWord] & (1 << MaskBit)) {
-          if (PrintRegMaskNumRegs < 0 ||
+        if (RegMask[MaskWord] & (1 << MaskBit)) {
+          if (!IsStandalone || PrintRegMaskNumRegs < 0 ||
               NumRegsEmitted <= static_cast<unsigned>(PrintRegMaskNumRegs)) {
-            OS << " " << printReg(i, TRI);
+            if (NumRegsEmitted > 0)
+              OS << ',';
+            OS << printReg(i, TRI);
             NumRegsEmitted++;
           }
           NumRegsInMask++;
@@ -848,9 +865,9 @@ void MachineOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
       if (NumRegsEmitted != NumRegsInMask)
         OS << " and " << (NumRegsInMask - NumRegsEmitted) << " more...";
     } else {
-      OS << " ...";
+      OS << "...";
     }
-    OS << ">";
+    OS << ')';
     break;
   }
   case MachineOperand::MO_RegisterLiveOut: {

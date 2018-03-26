@@ -59,7 +59,7 @@ TEST(MachineOperandTest, PrintRegisterMask) {
   std::string str;
   raw_string_ostream OS(str);
   MO.print(OS, /*TRI=*/nullptr, /*IntrinsicInfo=*/nullptr);
-  ASSERT_TRUE(OS.str() == "<regmask ...>");
+  ASSERT_TRUE(OS.str() == "CustomRegMask(...)");
 }
 
 TEST(MachineOperandTest, PrintSubReg) {

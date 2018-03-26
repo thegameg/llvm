@@ -227,25 +227,6 @@ void MIRPrinter::print(const MachineFunction &MF) {
   Out << YamlMF;
 }
 
-static void printCustomRegMask(const uint32_t *RegMask, raw_ostream &OS,
-                               const TargetRegisterInfo *TRI) {
-  assert(RegMask && "Can't print an empty register mask");
-  OS << StringRef("CustomRegMask(");
-
-  bool IsRegInRegMaskFound = false;
-  for (int I = 0, E = TRI->getNumRegs(); I < E; I++) {
-    // Check whether the register is asserted in regmask.
-    if (RegMask[I / 32] & (1u << (I % 32))) {
-      if (IsRegInRegMaskFound)
-        OS << ',';
-      OS << printReg(I, TRI);
-      IsRegInRegMaskFound = true;
-    }
-  }
-
-  OS << ')';
-}
-
 static void printRegClassOrBank(unsigned Reg, yaml::StringValue &Dest,
                                 const MachineRegisterInfo &RegInfo,
                                 const TargetRegisterInfo *TRI) {
@@ -660,8 +641,17 @@ void MIPrinter::print(const MachineInstr &MI, unsigned OpIdx,
                       bool PrintDef) {
   const MachineOperand &Op = MI.getOperand(OpIdx);
   switch (Op.getType()) {
+  case MachineOperand::MO_RegisterMask: {
+    auto RegMaskInfo = RegisterMaskIds.find(Op.getRegMask());
+    if (RegMaskInfo != RegisterMaskIds.end()) {
+      OS << StringRef(TRI->getRegMaskNames()[RegMaskInfo->second]).lower();
+      break;
+    }
+    LLVM_FALLTHROUGH;
+  }
   case MachineOperand::MO_Immediate:
-    if (MI.isOperandSubregIdx(OpIdx)) {
+    // Re-check for isImm if we falltrough from MO_RegisterMask.
+    if (Op.isImm() && MI.isOperandSubregIdx(OpIdx)) {
       MachineOperand::printTargetFlags(OS, Op);
       MachineOperand::printSubRegIdx(OS, Op.getImm(), TRI);
       break;
@@ -694,14 +684,6 @@ void MIPrinter::print(const MachineInstr &MI, unsigned OpIdx,
   case MachineOperand::MO_FrameIndex:
     printStackObjectReference(Op.getIndex());
     break;
-  case MachineOperand::MO_RegisterMask: {
-    auto RegMaskInfo = RegisterMaskIds.find(Op.getRegMask());
-    if (RegMaskInfo != RegisterMaskIds.end())
-      OS << StringRef(TRI->getRegMaskNames()[RegMaskInfo->second]).lower();
-    else
-      printCustomRegMask(Op.getRegMask(), OS, TRI);
-    break;
-  }
   }
 }
 

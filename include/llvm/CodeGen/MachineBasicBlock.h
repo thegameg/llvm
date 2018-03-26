@@ -756,6 +756,16 @@ public:
     IrrLoopHeaderWeight = Weight;
   }
 
+  /// Determine a possible list of successors of a basic block based on the
+  /// basic block machine operand being used inside the block. This should give
+  /// you the correct list of successor blocks in most cases except for things
+  /// like jump tables where the basic block references can't easily be found.
+  /// The MIRPRinter will skip printing successors if they match the result of
+  /// this funciton and the parser will use this function to construct a list if
+  /// it is missing.
+  void guessSuccessors(SmallVectorImpl<MachineBasicBlock *> &Successors,
+                       bool &IsFallthrough) const;
+
 private:
   /// Return probability iterator corresponding to the I successor iterator.
   probability_iterator getProbabilityIterator(succ_iterator I);
@@ -784,6 +794,14 @@ private:
   /// unless you know what you're doing, because it doesn't update Pred's
   /// successors list. Use Pred->removeSuccessor instead.
   void removePredecessor(MachineBasicBlock *Pred);
+
+  /// Return true if branch probabilities can be predicted when serializing
+  /// this basic block.
+  bool canPredictBranchProbabilities() const;
+
+  /// Return true if the successors can be predicted from the instructions
+  /// inside this basic block.
+  bool canPredictSuccessors() const;
 };
 
 raw_ostream& operator<<(raw_ostream &OS, const MachineBasicBlock &MBB);

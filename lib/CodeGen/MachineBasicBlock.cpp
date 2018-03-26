@@ -259,6 +259,60 @@ std::string MachineBasicBlock::getFullName() const {
   return Name;
 }
 
+bool MachineBasicBlock::canPredictBranchProbabilities() const {
+  if (succ_size() <= 1)
+    return true;
+  if (!hasSuccessorProbabilities())
+    return true;
+
+  SmallVector<BranchProbability, 8> Normalized(Probs.begin(), Probs.end());
+  BranchProbability::normalizeProbabilities(Normalized.begin(),
+                                            Normalized.end());
+  SmallVector<BranchProbability, 8> Equal(Normalized.size());
+  BranchProbability::normalizeProbabilities(Equal.begin(), Equal.end());
+
+  return std::equal(Normalized.begin(), Normalized.end(), Equal.begin());
+}
+
+bool MachineBasicBlock::canPredictSuccessors() const {
+  SmallVector<MachineBasicBlock *, 8> GuessedSuccs;
+  bool GuessedFallthrough;
+  guessSuccessors(GuessedSuccs, GuessedFallthrough);
+  if (GuessedFallthrough) {
+    if (const MachineFunction *MF = getParent()) {
+      MachineFunction::const_iterator NextI = std::next(getIterator());
+      if (NextI != MF->end()) {
+        MachineBasicBlock *Next = const_cast<MachineBasicBlock *>(&*NextI);
+        if (!is_contained(GuessedSuccs, Next))
+          GuessedSuccs.push_back(Next);
+      }
+    }
+  }
+  if (GuessedSuccs.size() != succ_size())
+    return false;
+  return std::equal(succ_begin(), succ_end(), GuessedSuccs.begin());
+}
+
+void MachineBasicBlock::guessSuccessors(
+    SmallVectorImpl<MachineBasicBlock *> &Result, bool &IsFallthrough) const {
+  SmallPtrSet<MachineBasicBlock *, 8> Seen;
+
+  for (const MachineInstr &MI : instrs()) {
+    if (MI.isPHI())
+      continue;
+    for (const MachineOperand &MO : MI.operands()) {
+      if (!MO.isMBB())
+        continue;
+      MachineBasicBlock *Succ = MO.getMBB();
+      auto RP = Seen.insert(Succ);
+      if (RP.second)
+        Result.push_back(Succ);
+    }
+  }
+  MachineBasicBlock::const_iterator I = getLastNonDebugInstr();
+  IsFallthrough = I == end() || !I->isBarrier();
+}
+
 void MachineBasicBlock::print(raw_ostream &OS, const SlotIndexes *Indexes,
                               bool IsStandalone) const {
   const MachineFunction *MF = getParent();
@@ -341,7 +395,15 @@ void MachineBasicBlock::print(raw_ostream &OS, ModuleSlotTracker &MST,
     HasLineAttributes = true;
   }
 
-  if (!succ_empty()) {
+  // Print the successors
+  bool canPredictProbs = !IsStandalone && canPredictBranchProbabilities();
+  // Even if the list of successors is empty, if we cannot guess it,
+  // we need to print it to tell the parser that the list is empty.
+  // This is needed, because MI models unreachable as empty blocks
+  // with an empty successor list. If the parser would see that
+  // without the successor list, it would guess the code would
+  // fallthrough.
+  if (!succ_empty() || !canPredictProbs || !canPredictSuccessors()) {
     if (Indexes) OS << '\t';
     // Print the successors
     OS.indent(2) << "successors: ";

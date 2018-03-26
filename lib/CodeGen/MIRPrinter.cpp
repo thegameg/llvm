@@ -143,9 +143,6 @@ class MIPrinter {
   /// Synchronization scope names registered with LLVMContext.
   SmallVector<StringRef, 8> SSNs;
 
-  bool canPredictBranchProbabilities(const MachineBasicBlock &MBB) const;
-  bool canPredictSuccessors(const MachineBasicBlock &MBB) const;
-
 public:
   MIPrinter(raw_ostream &OS, ModuleSlotTracker &MST,
             const DenseMap<const uint32_t *, unsigned> &RegisterMaskIds,
@@ -483,62 +480,6 @@ void MIRPrinter::initRegisterMaskIds(const MachineFunction &MF) {
     RegisterMaskIds.insert(std::make_pair(Mask, I++));
 }
 
-void llvm::guessSuccessors(const MachineBasicBlock &MBB,
-                           SmallVectorImpl<MachineBasicBlock*> &Result,
-                           bool &IsFallthrough) {
-  SmallPtrSet<MachineBasicBlock*,8> Seen;
-
-  for (const MachineInstr &MI : MBB) {
-    if (MI.isPHI())
-      continue;
-    for (const MachineOperand &MO : MI.operands()) {
-      if (!MO.isMBB())
-        continue;
-      MachineBasicBlock *Succ = MO.getMBB();
-      auto RP = Seen.insert(Succ);
-      if (RP.second)
-        Result.push_back(Succ);
-    }
-  }
-  MachineBasicBlock::const_iterator I = MBB.getLastNonDebugInstr();
-  IsFallthrough = I == MBB.end() || !I->isBarrier();
-}
-
-bool
-MIPrinter::canPredictBranchProbabilities(const MachineBasicBlock &MBB) const {
-  if (MBB.succ_size() <= 1)
-    return true;
-  if (!MBB.hasSuccessorProbabilities())
-    return true;
-
-  SmallVector<BranchProbability,8> Normalized(MBB.Probs.begin(),
-                                              MBB.Probs.end());
-  BranchProbability::normalizeProbabilities(Normalized.begin(),
-                                            Normalized.end());
-  SmallVector<BranchProbability,8> Equal(Normalized.size());
-  BranchProbability::normalizeProbabilities(Equal.begin(), Equal.end());
-
-  return std::equal(Normalized.begin(), Normalized.end(), Equal.begin());
-}
-
-bool MIPrinter::canPredictSuccessors(const MachineBasicBlock &MBB) const {
-  SmallVector<MachineBasicBlock*,8> GuessedSuccs;
-  bool GuessedFallthrough;
-  guessSuccessors(MBB, GuessedSuccs, GuessedFallthrough);
-  if (GuessedFallthrough) {
-    const MachineFunction &MF = *MBB.getParent();
-    MachineFunction::const_iterator NextI = std::next(MBB.getIterator());
-    if (NextI != MF.end()) {
-      MachineBasicBlock *Next = const_cast<MachineBasicBlock*>(&*NextI);
-      if (!is_contained(GuessedSuccs, Next))
-        GuessedSuccs.push_back(Next);
-    }
-  }
-  if (GuessedSuccs.size() != MBB.succ_size())
-    return false;
-  return std::equal(MBB.succ_begin(), MBB.succ_end(), GuessedSuccs.begin());
-}
-
 void MIPrinter::print(const MachineBasicBlock &MBB) {
   assert(MBB.getNumber() >= 0 && "Invalid MBB number");
   OS << "bb." << MBB.getNumber();
@@ -577,7 +518,7 @@ void MIPrinter::print(const MachineBasicBlock &MBB) {
 
   bool HasLineAttributes = false;
   // Print the successors
-  bool canPredictProbs = canPredictBranchProbabilities(MBB);
+  bool canPredictProbs = MBB.canPredictBranchProbabilities();
   // Even if the list of successors is empty, if we cannot guess it,
   // we need to print it to tell the parser that the list is empty.
   // This is needed, because MI model unreachable as empty blocks
@@ -585,7 +526,7 @@ void MIPrinter::print(const MachineBasicBlock &MBB) {
   // without the successor list, it would guess the code would
   // fallthrough.
   if ((!MBB.succ_empty() && !SimplifyMIR) || !canPredictProbs ||
-      !canPredictSuccessors(MBB)) {
+      !MBB.canPredictSuccessors()) {
     OS.indent(2) << "successors: ";
     for (auto I = MBB.succ_begin(), E = MBB.succ_end(); I != E; ++I) {
       if (I != MBB.succ_begin())

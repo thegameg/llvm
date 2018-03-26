@@ -657,7 +657,7 @@ bool MIParser::parseBasicBlock(MachineBasicBlock &MBB,
   if (!ExplicitSuccessors) {
     SmallVector<MachineBasicBlock*,4> Successors;
     bool IsFallthrough;
-    guessSuccessors(MBB, Successors, IsFallthrough);
+    MBB.guessSuccessors(Successors, IsFallthrough);
     for (MachineBasicBlock *Succ : Successors)
       MBB.addSuccessor(Succ);
 
